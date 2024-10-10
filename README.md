@@ -1,4 +1,6 @@
-# dazi
+# Typing-web
+
+http://totry.vip
 
 ## Project setup
 ```
