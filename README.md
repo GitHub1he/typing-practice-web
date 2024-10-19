@@ -47,6 +47,12 @@ npx pbjs -t json-module -w commonjs -o src/proto/resProto.js  src/proto/Response
 npx pbjs -t json-module -w commonjs -o src/proto/message.js  src/proto/message.proto
 ```
 
+卸载不需要的依赖：
+
+```
+npm uninstall package-name
+```
+
 ### Customize configuration
 
 See [Configuration Reference](https://cli.vuejs.org/config/).

@@ -1,0 +1,22 @@
+syntax = "proto3";// 指定protobuf版本
+option java_package = "com.he.backend.ws.msg";// 指定包名
+option java_outer_classname = "RequestProtobuf";// 指定生成的类名
+
+message RequestMsg {
+    Head head = 1;
+    Body body = 2;
+}
+
+message Head {
+    int32 msgType = 1;
+    string msgContentType = 2;
+    int64 timestamp = 3;
+    uint32 userId = 4;
+    string access = 5;
+    string roomId = 6;
+}
+
+message Body {
+    string data = 2;
+    string extend = 3;
+}

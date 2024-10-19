@@ -1,21 +1,8 @@
 <template>
-  <!-- <div class="full-page">
-    <img :src="url" class="background-image" alt="Background Image" />
-  </div> -->
-  <img src="https://v1.jinrishici.com/all.svg">
+  <div :style="randomPosition" class="shici">
+    <img src="https://v1.jinrishici.com/all.svg">
+  </div>
 
-
-  <!-- 名言：https://v1.hitokoto.cn/ -->
-
-  <!-- Bing首页图：https://cn.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1 -->
-
-  <!-- 音乐：https://music.aityp.com/playlist/detail?id=145787433
-
-// 详细接口文档见：https://binaryify.github.io/NeteaseCloudMusicApi
-内容过多不便展示 -->
-
-  <!-- 网易云评论：https://api.comments.h -->
-  <!-- <h1>这里是首页</h1> -->
 </template>
 
 <script setup>
@@ -25,7 +12,8 @@ import { proxyAxios } from '../api/utils/httpUtil';
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 
 const data = ref();
-const url = ref()
+const url = ref();
+const randomPosition = ref();
 
 
 const fetchImage = () => {
@@ -47,7 +35,7 @@ const fetchImage = () => {
 
       // 延迟后将透明度设置为 1
       setTimeout(() => {
-        document.body.style.transition = 'opacity 2s ease-in-out'; // 设置过渡效果
+        document.body.style.transition = 'opacity 1s ease-in-out'; // 设置过渡效果
         document.body.style.opacity = '1'; // 渐变到完全显示
       }, 100);  // 延迟时间，以确保背景图片加载
     })
@@ -56,8 +44,22 @@ const fetchImage = () => {
     });
 }
 
+const setRandomPosition = () => {
+  // 获取随机的 top 和 left 值，范围在 0% 到 80% 之间，确保不超出窗口
+  const top = Math.random() * 80;
+  const left = Math.random() * 80;
+
+  // 设置随机位置
+  randomPosition.value = {
+    position: 'absolute',  // 确保 div 是绝对定位
+    top: `${top}%`,
+    left: `${left}%`
+  };
+}
+
 onMounted(() => {
   fetchImage();
+  setRandomPosition();
 });
 
 // 在组件卸载前清理样式
@@ -70,28 +72,13 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.full-page {
-  position: absolute;
-  /* 为绝对定位的子元素提供参考 */
-  height: 100vh;
-  /* 视口高度 */
-  width: 100vw;
-  /* 视口宽度 */
+.shici {
+  display: inline-block;
+  background-color: rgba(255, 255, 255, 0.7);
+  /* 半透明白色背景 */
+  border-radius: 0.325rem;
+  /* 圆角效果 */
   overflow: hidden;
-  z-index: -999;
-  /* 隐藏滚动条 */
-}
-
-.background-image {
-  position: absolute;
-  top: 50%;
-  /* 垂直居中 */
-  left: 50%;
-  /* 水平居中 */
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  /* 保持纵横比，填充整个区域 */
-  transform: translate(-50%, -50%);
+  /* 确保图片不会溢出圆角区域 */
 }
 </style>

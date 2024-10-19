@@ -18,6 +18,8 @@
     <button @click="sendMessage">Send</button>
   </div>
 
+  <a-button type="dashed" @click="handleIndividualTest()">个人测试</a-button>
+
 
   <a-modal v-model:open="confirmReConnect" title="是否确认登录" :confirm-loading="confirmLoading" @ok="handleConfirmReConnect"
     @cancel="cancelConfirmReConnect">
@@ -30,9 +32,10 @@ import { onBeforeUnmount, ref } from 'vue';
 import { useStore } from 'vuex';
 // import protobuf from 'protobufjs';
 import baseUrl from '@/api/base';
-import resProtoRoot from '../proto/resProto.js';
-import msgProtoRoot from '../proto/message.js';
-import { Msg } from '../js/Msg';
+import resProtoRoot from '../js/resProto.js';
+import reqProtoRoot from '../js/reqProto.js';
+// import msgProtoRoot from '../js/message.js';
+import { ReqMsg } from '../js/ReqMsg';
 
 const modalText = ref('是否确认重新登录');
 const confirmReConnect = ref(false);
@@ -50,19 +53,20 @@ const maxRetries = 1;
 let confirmCode;
 
 // 获取消息类型
+const reqType = reqProtoRoot.lookupType("RequestMsg");
 const resType = resProtoRoot.lookupType("RespMsg");
-const msgType = msgProtoRoot.lookupType("Msg");
+// const msgType = msgProtoRoot.lookupType("Msg");
 
 // 编码函数,使用请求报文编码
 const encodeMessage = (msgObj) => {
   messages.value.push(`You: `, JSON.stringify(msgObj));
   // 验证消息对象
-  const errMsg = msgType.verify(msgObj);
+  const errMsg = reqType.verify(msgObj);
   if (errMsg) throw Error(errMsg);
 
   // 编码消息
-  const message = msgType.create(msgObj); // 创建消息实例
-  const buffer = msgType.encode(message).finish(); // 编码为字节数组
+  const message = reqType.create(msgObj); // 创建消息实例
+  const buffer = reqType.encode(message).finish(); // 编码为字节数组
   return buffer;
 };
 
@@ -204,32 +208,39 @@ const sendMessage = (msg) => {
 /**
  * 获取不同类型的报文
  */
-const getMsg = (mode) => {
-  const msg = new Msg();
-  msg.head.access = store.state.user.access;
-  msg.head.timestamp = Math.floor(Date.now() / 1000);
-  switch (mode) {
+const getMsg = (type, contentType, data) => {
+  const reqMsg = new ReqMsg();
+  reqMsg.head.userId = store.state.user.userId;
+  reqMsg.head.access = store.state.user.access;
+  reqMsg.head.timestamp = Math.floor(Date.now() / 1000);
+  switch (type) {
     case 'CONNECT':
       // 建立连接
-      msg.head.msgType = 1
+      reqMsg.head.msgType = 1
       break
     case 'RECONNECT':
       // 建立连接
-      msg.head.msgType = 2
-      msg.body.msgContent = confirmCode;
+      reqMsg.head.msgType = 2
+      reqMsg.body.msgContent = confirmCode;
       break;
     case 'LOGIN_OUT':
       // 登出
-      msg.head.msgType = -2
+      reqMsg.head.msgType = -2
+      break;
+    case 'TEST_INDIVIDUAL':
+      // 个人测试
+      reqMsg.head.msgType = 4
+      reqMsg.head.msgContentType = contentType;
+      reqMsg.body.data = data;
       break;
     default:
       // 其他
-      msg.head.msgType = 9
+      reqMsg.head.msgType = 9
       break;
   }
 
-  console.log('msg:', msg)
-  return encodeMessage(msg);
+  console.log('msg:', reqMsg)
+  return encodeMessage(reqMsg);
 }
 
 const handleConfirmReConnect = () => {
@@ -245,6 +256,9 @@ const cancelConfirmReConnect = () => {
   ws.close();
   confirmReConnect.value = false;
   confirmLoading.value = false;
+}
+const handleIndividualTest = () => {
+  sendMessage(getMsg('TEST_INDIVIDUAL', 'start'));
 }
 </script>
 
