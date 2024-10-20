@@ -14,8 +14,14 @@
 
     <h2>Send Message</h2>
     <!-- 输入框用于输入要发送的消息 -->
-    <input v-model="newMessage" placeholder="Enter your message" />
-    <button @click="sendMessage">Send</button>
+    <a-select ref="select" v-model:value="msgContentType" style="width: 120px">
+      <a-select-option value="start">start</a-select-option>
+      <a-select-option value="ing">ing</a-select-option>
+      <a-select-option value="collect">collect</a-select-option>
+      <a-select-option value="end">end</a-select-option>
+    </a-select>
+    <input v-model="msgBodyData" placeholder="Enter your message" />
+    <button @click="sendInputMessage">Send</button>
   </div>
 
   <a-button type="dashed" @click="handleIndividualTest()">个人测试</a-button>
@@ -43,7 +49,8 @@ const confirmLoading = ref(false);
 const store = useStore();
 let ws = null; // 用来保存 WebSocket 实例
 const messages = ref([]); // 用来保存收到的消息
-const newMessage = ref(''); // 保存输入框中的消息内容
+const msgBodyData = ref(''); // 保存输入框中的消息内容
+const msgContentType = ref(''); // 保存输入框中的消息类型
 let wsStatus = ref('init'); // 连接状态：'init', 'connected', 'connecting', 'disconnected'
 let webSocketPingTimer = null; // 心跳定时器
 const webSocketPingTime = 9000; // 心跳的间隔，当前为9秒,
@@ -193,16 +200,15 @@ const startHeartbeat = () => {
 };
 
 // 发送消息到 WebSocket 服务器
-const sendMessage = (msg) => {
-  if (!msg) {
-    msg = newMessage.value;
+const sendMessage = (data) => {
+  ws.send(data); // 发送输入框中的消息
+};
+
+const sendInputMessage = (data) => {
+  if (data) {
+    data = getMsg('TEST_INDIVIDUAL', msgContentType.value, msgBodyData.value);
+    ws.send(data);
   }
-  // if (ws && wsStatus.value === 'connected') {
-  ws.send(msg); // 发送输入框中的消息
-  newMessage.value = ''; // 清空输入框
-  // } else {
-  //   console.error('Cannot send message. WebSocket is not connected.');
-  // }
 };
 
 /**
@@ -210,7 +216,7 @@ const sendMessage = (msg) => {
  */
 const getMsg = (type, contentType, data) => {
   const reqMsg = new ReqMsg();
-  reqMsg.head.userId = store.state.user.userId;
+  reqMsg.head.userId = store.state.user.user.userId;
   reqMsg.head.access = store.state.user.access;
   reqMsg.head.timestamp = Math.floor(Date.now() / 1000);
   switch (type) {
@@ -221,7 +227,7 @@ const getMsg = (type, contentType, data) => {
     case 'RECONNECT':
       // 建立连接
       reqMsg.head.msgType = 2
-      reqMsg.body.msgContent = confirmCode;
+      reqMsg.body.data = confirmCode;
       break;
     case 'LOGIN_OUT':
       // 登出
