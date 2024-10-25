@@ -37,7 +37,7 @@ var $root = ($protobuf.roots["default"] || ($protobuf.roots["default"] = new $pr
         id: 3
       },
       userId: {
-        type: "uint32",
+        type: "int64",
         id: 4
       },
       access: {

@@ -1,123 +1,267 @@
 <template>
-  <!-- <button @click="sendMessage">发送</button>
-  <button @click="initSocket">建立连接</button>
-  <button @click="handleOnClose">断开连接</button>
-  <input type="text" v-model="sendValue"> -->
-  <input type="text">
+  <a-button type="dashed" v-if="wsStatus === 'connected'" @click="wsLogout()">登出</a-button>
+  <a-button type="dashed" v-else @click="connectWebSocket()">登录</a-button>
+  <div>
+    <h2>WebSocket Connection Status</h2>
+    <!-- 动态显示 WebSocket 连接状态 -->
+    <label>webSocket Status: {{ wsStatus }}</label>
+
+    <h2>Send Message| TEST_INDIVIDUAL 、</h2>
+    <!-- 输入框用于输入要发送的消息 -->
+    <input v-model="msgTypeStr" placeholder="消息类型" />
+    <a-select ref="select" v-model:value="msgContentType" style="width: 120px">
+      <a-select-option value="start">start</a-select-option>
+      <a-select-option value="ing">ing</a-select-option>
+      <a-select-option value="collect">collect</a-select-option>
+      <a-select-option value="end">end</a-select-option>
+    </a-select>
+    <input v-model="msgBodyData" placeholder="Enter your message" />
+    <button @click="sendInputMessage">Send</button>
+
+    <h2>WebSocket Messages</h2>
+    <!-- 显示收到的消息列表 -->
+    <ul>
+      <li v-for="(msg, index) in messages" :key="index">{{ msg }}</li>
+    </ul>
+  </div>
+
+  <a-modal v-model:open="confirmReConnect" title="是否确认登录" :confirm-loading="confirmLoading" @ok="handleConfirmReConnect"
+    @cancel="cancelConfirmReConnect">
+    <p>{{ modalText }}</p>
+  </a-modal>
 </template>
 
 <script setup>
-// import { ref } from 'vue';
+import { onBeforeUnmount, ref } from 'vue';
+import { useStore } from 'vuex';
 // import protobuf from 'protobufjs';
-// import * as Constant from '../js/Constant';
-// // import responseProto from '../assets/proto/ResponseProtobuf.proto';
+import baseUrl from '@/api/base';
+import resProtoRoot from '../js/resProto.js';
+import reqProtoRoot from '../js/reqProto.js';
+// import msgProtoRoot from '../js/message.js';
+import { ReqMsg } from '../js/ReqMsg';
 
-// let webSocket = null;
-// let webSocketIsOpen = false; // 连接开启状态
-// let webSocketReconnectCount = 0; // 重连次数
-// const webSocketReconnectMaxCount = 3; // 最大重连次数
-// const heartbeat = '[0513]';
-// let webSocketPingTimer = null; // 心跳定时器
-// const webSocketPingTime = 10000; // 心跳的间隔，当前为10秒,
-// const urll = 'localhost:3333';
-// const types = 'ws';
-// const sendValue = ref();
-// const msgRoot = protobuf.parse(Constant.MESSAGE_PROTOBUF).root;
-// const msgType = msgRoot.lookupType('Msg');
+const modalText = ref('是否确认重新登录');
+const confirmReConnect = ref(false);
+const confirmLoading = ref(false);
+const store = useStore();
+let ws = null; // 用来保存 WebSocket 实例
+const messages = ref([]); // 用来保存收到的消息
+const msgTypeStr = ref(''); // 保存输入框中的消息内容
+const msgBodyData = ref(''); // 保存输入框中的消息内容
+const msgContentType = ref(''); // 保存输入框中的消息类型
+let wsStatus = ref('init'); // 连接状态：'init', 'connected', 'connecting', 'disconnected'
+let webSocketPingTimer = null; // 心跳定时器
+const webSocketPingTime = 9000; // 心跳的间隔，当前为9秒,
+const heartbeat = '[0513]';
+let retryCount = 0;
+const maxRetries = 1;
+let confirmCode;
 
-// // WebSocket 编码
-// const WSResEncode = (data) => {
-//   // 解析proto文件中的消息结构
-//   const message = msgType.create(data);
-//   const encodedMessage = msgType.encode(message).finish();
-//   console.log(data, ' -> 编码之后 -> ', encodedMessage);
-//   return encodedMessage;
-// };
-// // WebSocket 解码
-// const WSResDecode = (data) => {
-//   // const decodedMessage = ResponseType.decode(data);
-//   // const decodedData = ResponseType.toObject(decodedMessage, { defaults: true });
-//   // console.log('解码之后', decodedData);
-//   return data;
-// };
+// 获取消息类型
+const reqType = reqProtoRoot.lookupType("RequestMsg");
+const resType = resProtoRoot.lookupType("RespMsg");
+// const msgType = msgProtoRoot.lookupType("Msg");
 
-// // 建立连接
-// const initSocket = () => {
-//   // 有参数的情况下：
-//   let url = `ws://${urll}/${types}`;
-//   webSocket = new WebSocket(url);
-//   webSocket.onopen = handleOnOpen;
-//   webSocket.onclose = handleOnClose;
-//   webSocket.onmessage = handleOnMessage;
-//   webSocket.onerror = handleOnError;
+// 编码函数,使用请求报文编码
+const encodeMessage = (msgObj) => {
+  messages.value.push(`You: `, JSON.stringify(msgObj));
+  // 验证消息对象
+  const errMsg = reqType.verify(msgObj);
+  if (errMsg) throw Error(errMsg);
 
-// };
-// // 在 WebSocket 连接成功后，定时发送心跳包
-// const startHeartbeat = () => {
-//   webSocketPingTimer = setTimeout(() => {
-//     if (!webSocketIsOpen) {
-//       return false;
-//     }
-//     console.log("心跳", heartbeat);
-//     webSocket.send(heartbeat);
-//     clearTimeout(webSocketPingTimer);
-//     // 重新执行
-//     startHeartbeat();
-//   }, webSocketPingTime);
-// };
-// // WebSocket 重连
-// const webSocketReconnect = () => {
-//   if (webSocketIsOpen) {
-//     return false;
-//   }
-//   this.webSocketReconnectCount += 1;
-//   // 判断是否到了最大重连次数
-//   if (webSocketReconnectCount >= webSocketReconnectMaxCount) {
-//     // webSocketWarningText = "重连次数超限";
-//     return false;
-//   }
-//   // 初始化
-//   initSocket();
+  // 编码消息
+  const message = reqType.create(msgObj); // 创建消息实例
+  const buffer = reqType.encode(message).finish(); // 编码为字节数组
+  return buffer;
+};
 
-//   // 每过 5 秒尝试一次，检查是否连接成功，直到超过最大重连次数
-//   let timer = setTimeout(() => {
-//     webSocketReconnect();
-//     clearTimeout(timer);
-//   }, 5000);
-// };
-// // 建立连接成功后的状态
-// const handleOnOpen = () => {
-//   console.log('websocket连接成功');
-//   webSocketIsOpen = true;
-//   webSocketReconnectCount = 0;
-//   startHeartbeat();
-// };
-// // 获取到后台消息的事件，操作数据的代码在onmessage中书写
-// const handleOnMessage = (res) => {
-//   // res就是后台实时传过来的数据
-//   console.log(WSResDecode(res));
-//   //给后台发送数据
-// };
-// const sendMessage = () => {
-//   console.log('发送了数据', sendValue.value);
-//   let msg = WSResEncode(sendValue.value);
-//   webSocket.send(msg);
-// };
-// // 关闭连接
-// const handleOnClose = () => {
-//   webSocket.close();
-//   webSocketIsOpen = false;
-//   webSocket = null;
-//   console.log('websocket连接已关闭');
-// };
-// //连接失败的事件
-// const handleOnError = (res) => {
-//   console.log('websocket连接失败');
-//   // 重连
-//   webSocketReconnect();
-//   // 打印失败的数据
-//   console.log(res);
-// }
+// 解码消息
+const decodeMessage = (buffer) => {
+  const message = resType.decode(buffer);
+  return resType.toObject(message);
+};
+
+// 在组件卸载时关闭 WebSocket 连接
+onBeforeUnmount(() => {
+  wsLogout();
+});
+
+const connectWebSocket = () => {
+  // todo 刷新access时机
+  wsStatus.value = 'connecting'
+  ws = new WebSocket(`${baseUrl.wsUrl}?a=${store.state.user.access}`);
+  ws.onopen = handleOnOpen;
+  ws.onclose = handleOnClose;
+  ws.onmessage = handleOnMessage;
+  ws.onerror = handleOnError;
+};
+
+const handleOnOpen = () => {
+  sendMessage(getMsg('CONNECT'));
+
+  console.log('WebSocket connection established');
+};
+
+const handleOnMessage = (event) => {
+  // 如果收到 CONFIRM_HEARTBEAT，则立即发送心跳
+  if (event.data === 'CONFIRM_HEARTBEAT') {
+    sendMessage(heartbeat);
+    return;
+  }
+  if (event.data === '[1128]') {
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const buffer = new Uint8Array(e.target.result); // 将结果转换为 Uint8Array
+
+    try {
+      const res = decodeMessage(buffer); // 调用 decode 函数
+      console.log("Decoded message:", res);
+      messages.value.push(res);
+      switch (res.code) {
+        case 'C0001':
+          // 连接成功
+          startHeartbeat();
+          wsStatus.value = 'connected';
+          break;
+        case 'C00011':
+          // 确认重新登录
+          confirmCode = res.data;
+          confirmReConnect.value = true;
+          console.log('确认是否重新登录', confirmCode)
+
+          break;
+        case 'C0002':
+          // 连接失败
+          ws.close();
+          break;
+        case 'C0003':
+          // 被重连
+          ws.close();
+          console.log('异地登录')
+          break;
+        case 'C0004':
+          // 登出
+          wsStatus.value = 'disconnected';
+          break;
+        default:
+          // 其他
+          console.log("接收到消息：", res)
+          break;
+      }
+    } catch (error) {
+      console.error("Error decoding message:", error);
+    }
+  };
+
+  reader.readAsArrayBuffer(event.data);// 确保读取的是 ArrayBuffer
+};
+
+// WebSocket 发生错误时的处理方法
+const handleOnError = (error) => {
+  wsStatus.value = 'disconnected'; // 更新状态为未连接
+  console.error('WebSocket connection error:', error);
+  retryCount++;
+  if (retryCount <= maxRetries) {
+    setTimeout(connectWebSocket, 2000); // 每2秒重试连接
+  }
+};
+
+// WebSocket 关闭连接时的处理方法
+const handleOnClose = (event) => {
+  wsLogout()
+  console.log(`WebSocket closed with code: ${event.code}, reason: ${event.reason}`);
+};
+
+const wsLogout = () => {
+  if (ws) {
+    sendMessage(getMsg('LOGIN_OUT'));
+    ws.close();
+  }
+  clearTimeout(webSocketPingTimer);
+  wsStatus.value = 'disconnected'; // 更新状态为未连接
+};
+
+const startHeartbeat = () => {
+  webSocketPingTimer = setTimeout(() => {
+    if (wsStatus.value !== 'connected') {
+      return false;
+    }
+    // console.log("心跳", heartbeat);
+    sendMessage(heartbeat);
+    clearTimeout(webSocketPingTimer);
+    // 重新执行
+    startHeartbeat();
+  }, webSocketPingTime);
+};
+
+// 发送消息到 WebSocket 服务器
+const sendMessage = (data) => {
+  ws.send(data); // 发送输入框中的消息
+};
+
+const sendInputMessage = (data) => {
+  if (data) {
+    data = getMsg(msgTypeStr.value, msgContentType.value, msgBodyData.value);
+    ws.send(data);
+  }
+};
+
+/**
+ * 获取不同类型的报文
+ */
+const getMsg = (type, contentType, data) => {
+  const reqMsg = new ReqMsg();
+  reqMsg.head.userId = store.state.user.user.userId;
+  reqMsg.head.access = store.state.user.access;
+  reqMsg.head.timestamp = Math.floor(Date.now() / 1000);
+  switch (type) {
+    case 'CONNECT':
+      // 建立连接
+      reqMsg.head.msgType = 1
+      break
+    case 'RECONNECT':
+      // 建立连接
+      reqMsg.head.msgType = 2
+      reqMsg.body.data = confirmCode;
+      break;
+    case 'LOGIN_OUT':
+      // 登出
+      reqMsg.head.msgType = -2
+      break;
+    case 'TEST_INDIVIDUAL':
+      // 个人测试
+      reqMsg.head.msgType = 4
+      reqMsg.head.msgContentType = contentType;
+      reqMsg.body.data = data;
+      break;
+    default:
+      // 其他
+      reqMsg.head.msgType = 9
+      break;
+  }
+
+  console.log('msg:', reqMsg)
+  return encodeMessage(reqMsg);
+}
+
+const handleConfirmReConnect = () => {
+  modalText.value = '正在连接...';
+  confirmLoading.value = true;
+
+  sendMessage(getMsg('RECONNECT'));
+
+  confirmReConnect.value = false;
+  confirmLoading.value = false;
+};
+const cancelConfirmReConnect = () => {
+  ws.close();
+  confirmReConnect.value = false;
+  confirmLoading.value = false;
+}
 
 </script>
 

@@ -11,7 +11,7 @@ message Head {
     int32 msgType = 1;
     string msgContentType = 2;
     int64 timestamp = 3;
-    uint32 userId = 4;
+    int64 userId = 4;
     string access = 5;
     string roomId = 6;
 }
