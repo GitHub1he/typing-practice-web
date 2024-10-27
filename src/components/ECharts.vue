@@ -3,7 +3,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import * as echarts from 'echarts';
 
 import { defineProps } from 'vue';
@@ -28,7 +28,12 @@ onBeforeUnmount(() => {
     myChart.dispose();
   }
 });
-
+// 监听数据变化并重绘图表
+watch(() => props.data, (newData) => {
+  if (myChart) {
+    drawChart(myChart, newData);
+  }
+}, { deep: true });
 const drawChart = (myChart, data) => {
   const option = {
     xAxis: {

@@ -5,9 +5,9 @@
   <a-card>
     文章进度
     <a-progress :stroke-color="{
-    '0%': '#108ee9',
-    '100%': '#87d068',
-  }" :percent=defaultPercent />
+      '0%': '#108ee9',
+      '100%': '#87d068',
+    }" :percent=defaultPercent />
     <div class="title">
       <p>{{ articleInfo.title }}</p>&nbsp;
       <span>字数：{{ articleInfo.wordNums }}</span>
@@ -276,4 +276,3 @@ provide('inputContent', inputContent,);
   display: inline-block;
 }
 </style>
-../../api/utils/generalUtil

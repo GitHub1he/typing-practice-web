@@ -52,15 +52,15 @@
 </template>
 
 <script setup>
-import { ref, inject } from 'vue';
+import { ref, inject, computed } from 'vue';
 import ECharts from '@/components/ECharts.vue';
 const scoreInfo = ref(inject('scoreInfo'));
-console.log(scoreInfo.value);
-const chartData1 = {
-  xAxisData: JSON.parse(scoreInfo.value.axisXData),
-  seriesData: JSON.parse(scoreInfo.value.axisYData),
-};
-
+const chartData1 = computed(() => {
+  return {
+    xAxisData: scoreInfo.value.axisXData ? JSON.parse(scoreInfo.value.axisXData) : [],
+    seriesData: scoreInfo.value.axisYData ? JSON.parse(scoreInfo.value.axisYData) : [],
+  };
+});
 </script>
 
 <style scoped>

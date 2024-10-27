@@ -1,3 +1,4 @@
+<!-- 这个组件是一个练习打字的文本输入模块，具有显示文章内容、实时更新打字速度和准确率等功能。它的作用主要是提供一个双文本框布局，其中一个显示文章内容，另一个用于输入，并在输入过程中动态计算速度和准确率等信息。 -->
 <template>
   <div :class="{ 'flex-container': isSideBySide }">
     <a-textarea :value="articleInfo.content" class="custom-textarea" readonly
@@ -10,7 +11,7 @@
     </div>
   </div>
 </template>
-  
+
 <script setup>
 import { ref, computed, defineExpose, inject, defineEmits, watch, nextTick } from 'vue';
 import api from '../../api';
@@ -100,7 +101,7 @@ const handleText = () => {
 };
 
 </script>
-  
+
 <style scoped>
 .custom-textarea {
   font-size: 18px;
