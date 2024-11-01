@@ -15,6 +15,9 @@ const baseApi = {
   getMsgProto() {
     return axios.get(`/base/get/msgProto`);
   },
+  getWsAddr() {
+    return axios.get(`/base/get/addr`);
+  },
 };
 
 export default baseApi;

@@ -27,30 +27,22 @@
     </a-tooltip>
   </div>
 
-  <div div class="mode-select" v-if="individualTestStatus === 'CHANGE_MODE'">
-    <a-row gutter="16">
-      <a-col :span="4"></a-col>
-      <a-col :span="8">
-        <a-card :hoverable="true" title="个人练习">
-          <div>
-            <a-list :grid="{ gutter: 16, column: 1 }" :data-source="languages">
-              <template #renderItem="{ item }">
-                <a-list-item>
-                  <a-card :title="item.itemName" hoverable class="language-card"
-                    @click="individualTest(item.itemCode)"></a-card>
-                </a-list-item>
-              </template>
-            </a-list>
-          </div>
-        </a-card>
-      </a-col>
-      <a-col :span="8">
-        <a-card title="其他模式">
-          <p>暂未开放</p>
-        </a-card>
-      </a-col>
-      <a-col :span="4"></a-col>
-    </a-row>
+  <div class="mode-select" v-if="individualTestStatus === 'CHANGE_MODE'">
+
+    <a-card class="mode-select-item" :hoverable="true" title="个人练习">
+      <a-list :grid="{ gutter: 16, column: 1 }" :data-source="languages">
+        <template #renderItem="{ item }">
+          <a-list-item>
+            <a-card class="language-card" :title="item.itemName" @click="individualTest(item.itemCode)"
+              hoverable></a-card>
+          </a-list-item>
+        </template>
+      </a-list>
+    </a-card>
+
+    <a-card class="mode-select-item" title="其他模式">
+      <p>暂未开放</p>
+    </a-card>
   </div>
 
 
@@ -61,6 +53,9 @@
     <a-button type="dashed" @click="updateIsSideBySide()">改变布局</a-button>
     <a-button type="dashed" @click="individualSubmit()">提交成绩(Ctrl+Enter)</a-button>
     <label>{{ inputContent.length }}/{{ sourceContent.length }}</label>
+    <label>正确率:{{ Number(scoreInfo.accuracy) * 100 }}% </label>
+    <label>速度:{{ scoreInfo.speed }}字/秒 </label>
+    <label>用时:{{ scoreInfo.actualDuration }}秒 </label>
     <div :class="{ 'flex-container': isSideBySide }">
       <a-textarea :value="sourceContent" id="individual_source_text" class="custom-textarea" readonly
         :style="{ fontSize: fontSize + 'px', ...textareaAutoSize }" />
@@ -70,7 +65,6 @@
     </div>
   </div>
 
-  <!-- v-if="individualTestStatus === 'END'" -->
   <div class="test-individual" v-if="individualTestStatus === 'END'">
     <AfterPracticeView />
   </div>
@@ -85,6 +79,8 @@
 import { onMounted, onBeforeUnmount, computed, ref, provide } from 'vue';
 import { useStore } from 'vuex';
 import baseUrl from '@/api/base';
+import api from '@/api/index.js';
+import utils from '@/api/utils/generalUtil';
 import AfterPracticeView from './Practice/AfterPracticeView.vue';
 import resProtoRoot from '../js/resProto.js';
 import reqProtoRoot from '../js/reqProto.js';
@@ -116,7 +112,7 @@ let individualTestIngTimer = null;
 let individualTestCollectTimer = null;
 let individualTestAppendTimer = null;
 const individualAppendIndex = ref(0); // 个人测试追加文章数据
-const individualAppendData = ref(''); // 个人测试追加文章数据,防止直接更新sourceContent会组件刷新，导致中文未确认字符丢失
+const bufferData = ref({ individualAppendData: "", accuracy: "", speed: "", actualDuration: "", });// 个人测试追加文章数据,防止直接更新sourceContent会组件刷新，导致中文未确认字符丢失
 const typingInterval = 100; // 设置打字机字符显示间隔（毫秒）
 const isComposing = ref(false); // 当前是否中文输入状态
 const individualTestStatus = ref('CHANGE_MODE'); // 个人测试是否已开始
@@ -148,6 +144,7 @@ const decodeMessage = (buffer) => {
 };
 
 onMounted(() => {
+  api.baseApi.getWsAddr();
   window.addEventListener('keydown', handleKeydown);
 });
 
@@ -216,9 +213,12 @@ const connectWebSocket = () => {
                 sourceContent.value = res.data
               } if (res.msg === 'ING') {
                 const parseDate = JSON.parse(res.data);
+                bufferData.value.speed = parseDate.speed;
+                bufferData.value.accuracy = parseDate.accuracy;
+                bufferData.value.actualDuration = parseDate.actualDuration;
                 if (Number(sequence.value) + 1 === Number(parseDate.sequence)) {
                   sequence.value = Number(parseDate.sequence);
-                  individualAppendData.value += parseDate.appendData;
+                  bufferData.value.individualAppendData += parseDate.appendData;
                 } else {
                   console.log('次序不同,发送COLLECT报文')
                   sendMessage(getMsg('TEST_INDIVIDUAL', 'COLLECT', ''))
@@ -227,15 +227,18 @@ const connectWebSocket = () => {
                 const parseDate = JSON.parse(res.data);
                 sourceContent.value = parseDate.appendData;
                 sequence.value = Number(parseDate.sequence);
-                individualAppendData.value = '';
+                bufferData.value.individualAppendData = '';
                 individualAppendIndex.value = 0;
               } else if (res.msg === 'END') {
                 // 展示练习情况
                 clearIndividualTestTimer();
                 scoreInfo.value = JSON.parse(res.data);
                 individualTestStatus.value = 'END'
+                wsLogout();
               }
-
+              break;
+            case 'C4100':
+              utils.tip(res.data, "warning");
               break;
             default:
               // 其他
@@ -448,11 +451,15 @@ const startIndividualTestAppendTimer = () => {
       clearIndividualTestTimer();
       return;
     }
-    if (!isComposing.value && individualAppendIndex.value < individualAppendData.value.length) {
-      // 当拼音在未确认的情况下，不更新sourceContent的值，否则会刷新元素，导致拼音未确认数据不显示
-      sourceContent.value += individualAppendData.value[individualAppendIndex.value];
-      individualAppendIndex.value++;
-
+    if (!isComposing.value) {
+      if (individualAppendIndex.value < bufferData.value.individualAppendData.length) {
+        // 当拼音在未确认的情况下，不更新sourceContent的值，否则会刷新元素，导致拼音未确认数据不显示
+        sourceContent.value += bufferData.value.individualAppendData[individualAppendIndex.value];
+        individualAppendIndex.value++;
+      }
+      scoreInfo.value.speed = bufferData.value.speed;
+      scoreInfo.value.accuracy = bufferData.value.accuracy;
+      scoreInfo.value.actualDuration = bufferData.value.actualDuration;
       textarea.scrollTop = textarea.scrollHeight;
     }
     clearTimeout(individualTestAppendTimer)
@@ -468,12 +475,12 @@ const clearIndividualTestTimer = () => {
 
 /** 个人测试-提交数据 */
 const individualSubmit = () => {
-  console.log("个人测试-提交数据")
   if (individualTestStatus.value === 'ING') {
     individualTestStatus.value = 'END';
     clearIndividualTestTimer();
     sendMessage(getMsg('TEST_INDIVIDUAL', 'END', inputContent.value));
-    // todo 跳转下一个展示数据的页面
+  } else {
+    utils.tip("输入文字开始", "warning");
   }
 }
 
@@ -482,6 +489,21 @@ const individualSubmit = () => {
 <style scoped>
 a-card {
   cursor: pointer;
+}
+
+.mode-select {
+  width: 100%;
+  margin: 5rem auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  min-height: 70vh;
+}
+
+.mode-select-item {
+  width: 40%;
+  height: auto
 }
 
 /* 语言卡片样式 */
@@ -496,10 +518,9 @@ a-card {
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
 
-.test-individual,
-.mode-select {
+.test-individual {
   width: 80%;
-  margin: 5rem auto;
+  margin: 4rem auto 0 auto;
 }
 
 .flex-container {
@@ -509,5 +530,16 @@ a-card {
 .custom-textarea {
   font-size: 18px;
   box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .mode-select {
+    flex-direction: column;
+  }
+
+  .mode-select-item {
+    width: 70%;
+    height: auto
+  }
 }
 </style>

@@ -92,9 +92,9 @@ p {
 
 .main-content {
   margin-top: 3.5rem;
-  border: 1px solid transparent;
+  /* border: 1px solid transparent; */
   width: 100%;
-  min-height: 87vh;
+  min-height: calc(100vh - 3.5rem - 3.5rem);
 }
 
 .footer {
@@ -111,6 +111,7 @@ p {
   font-size: 14px;
   padding: 10px;
   box-sizing: border-box;
+  min-height: 3.5rem;
 }
 
 .filing img {
