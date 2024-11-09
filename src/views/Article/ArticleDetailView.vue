@@ -107,12 +107,10 @@ let rankList = ref();
 const loadArticle = (articleId) => {
   api.articleApi.desc(articleId).then(res => {
     detail.value = res.data.data;
-    console.log(detail.value);
   });
   api.rankApi.getArticleRanking(articleId).then(res => {
     rankList.value = res.data.list;
   });
-  console.log("调用浏览页面接口");
   view(articleId);
 };
 
@@ -299,4 +297,3 @@ button {
   cursor: pointer;
 }
 </style>
-../../api/utils/dict

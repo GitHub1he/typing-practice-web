@@ -1,6 +1,5 @@
 <template>
   <div class="info">
-    <h4>速度排行榜</h4>
     <div class="container" v-if="utils.objIsEmpty(rankList)">
       <a-empty />
     </div>

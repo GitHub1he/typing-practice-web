@@ -30,14 +30,11 @@
   <div class="mode-select" v-if="individualTestStatus === 'CHANGE_MODE'">
 
     <a-card class="mode-select-item" :hoverable="true" title="个人练习">
-      <a-list :grid="{ gutter: 16, column: 1 }" :data-source="languages">
-        <template #renderItem="{ item }">
-          <a-list-item>
-            <a-card class="language-card" :title="item.itemName" @click="individualTest(item.itemCode)"
-              hoverable></a-card>
-          </a-list-item>
-        </template>
-      </a-list>
+      <div v-for="(item, index) in languages" :key="item.itemCode || index">
+        <a-card class="language-card" :title="item.itemName" @click="StartIndividualTest(item.itemCode)"
+          style="margin-bottom: 5px;" hoverable></a-card>
+      </div>
+      <a-card class="language-card" title="随机" @click="StartIndividualTest('')" hoverable></a-card>
     </a-card>
 
     <a-card class="mode-select-item" title="其他模式">
@@ -46,16 +43,26 @@
   </div>
 
 
-  <div class="test-individual" @keydown="handleKeydown" tabindex="0"
-    v-if="individualTestStatus === 'INIT' || individualTestStatus === 'ING'">
-    <a-button type="dashed" @click="increaseFontSize()">+</a-button>
-    <a-button type="dashed" @click="decreaseFontSize()">-</a-button>
-    <a-button type="dashed" @click="updateIsSideBySide()">改变布局</a-button>
-    <a-button type="dashed" @click="individualSubmit()">提交成绩(Ctrl+Enter)</a-button>
-    <label>{{ inputContent.length }}/{{ sourceContent.length }}</label>
-    <label>正确率:{{ Number(scoreInfo.accuracy) * 100 }}% </label>
-    <label>速度:{{ scoreInfo.speed }}字/秒 </label>
-    <label>用时:{{ scoreInfo.actualDuration }}秒 </label>
+  <div class="test-individual" @paste.capture.prevent=false @copy.capture.prevent=false @keydown="handleKeydown"
+    tabindex="0" v-if="individualTestStatus === 'INIT' || individualTestStatus === 'ING'">
+    <div class="test-header">
+      <div class="font-change">
+        <a-button type="dashed" @click="increaseFontSize()">+</a-button>
+        <a-button type="dashed" @click="decreaseFontSize()">-</a-button>
+      </div>
+      <div class="showing-data">
+        <label>{{ inputContent.length }}/{{ sourceContent.length }}</label>
+        <label>正确率:{{ Number(scoreInfo.accuracy) * 100 }}% </label>
+        <label>速度:{{ scoreInfo.speed }}字/秒 </label>
+        <label>用时:{{ scoreInfo.actualDuration }}秒 </label>
+        <label style="color: red;">{{ scoreInfo.tipMsg }} </label>
+      </div>
+      <div class="option-btn">
+        <a-button type="dashed" @click="updateIsSideBySide()">改变布局</a-button>
+        <a-button type="primary" @click="individualSubmit()">提交成绩(Ctrl+Enter)</a-button>
+      </div>
+    </div>
+
     <div :class="{ 'flex-container': isSideBySide }">
       <a-textarea :value="sourceContent" id="individual_source_text" class="custom-textarea" readonly
         :style="{ fontSize: fontSize + 'px', ...textareaAutoSize }" />
@@ -96,11 +103,12 @@ const confirmLoading = ref(false);
 let ws = null; // 用来保存 WebSocket 实例
 let wsStatus = ref('init'); // 连接状态：'init', 'connected', 'connecting', 'disconnected'
 let webSocketPingTimer = null; // 心跳定时器
-const webSocketPingTime = 9000; // 心跳的间隔，当前为9秒,
+const webSocketPingTime = 12000; // 心跳的间隔，当前为12秒,
 const heartbeat = '[0513]';
 let retryCount = 0;
 const maxRetries = 1;
 let confirmCode;
+let selectLanguages = null;
 
 const languages = store.state.article.articleLanguage;
 const fontSize = ref(16);
@@ -144,7 +152,6 @@ const decodeMessage = (buffer) => {
 };
 
 onMounted(() => {
-  api.baseApi.getWsAddr();
   window.addEventListener('keydown', handleKeydown);
 });
 
@@ -156,7 +163,6 @@ onBeforeUnmount(() => {
 
 const connectWebSocket = () => {
   return new Promise((resolve, reject) => {
-    // todo 刷新access时机
     wsStatus.value = 'connecting'
     ws = new WebSocket(`${baseUrl.wsUrl}?a=${store.state.user.access}`);
     ws.onopen = () => {
@@ -196,15 +202,25 @@ const connectWebSocket = () => {
             case 'C0002':
               // 连接失败
               ws.close();
+              individualTestStatus.value = 'CHANGE_MODE';
               break;
             case 'C0003':
               // 被重连
               ws.close();
-              console.log('异地登录')
+              utils.tip('异地登录', 'warning')
+              individualTestStatus.value = 'CHANGE_MODE';
               break;
             case 'C0004':
               // 登出
               wsStatus.value = 'disconnected';
+              break;
+            case 'C0006':
+              // 提示
+              if (individualTestStatus.value === 'ING') {
+                scoreInfo.value.tipMsg = res.msg;
+              } else {
+                utils.tip(res.msg, "warning");
+              }
               break;
             case 'C4000':
               // sourceContent 值替换会触发视图的重新渲染
@@ -238,7 +254,9 @@ const connectWebSocket = () => {
               }
               break;
             case 'C4100':
-              utils.tip(res.data, "warning");
+              if (res.msg === 'INIT') {
+                StartIndividualTest(selectLanguages);
+              }
               break;
             default:
               // 其他
@@ -258,8 +276,9 @@ const connectWebSocket = () => {
       retryCount++;
       if (retryCount <= maxRetries) {
         setTimeout(connectWebSocket, 2000); // 每2秒重试连接
+      } else {
+        reject(error);  // 连接失败后 reject Promise
       }
-      reject(error);  // 连接失败后 reject Promise
     };
     ws.onclose = () => {
       wsLogout();
@@ -348,17 +367,18 @@ const cancelConfirmReConnect = () => {
   confirmLoading.value = false;
 }
 
-const individualTest = async (language) => {
+const StartIndividualTest = async (language) => {
   if (!ws || ws.readyState !== WebSocket.OPEN) {
     try {
       console.info('WebSocket 开始连接');
+      await api.baseApi.getWsAddr();
       await connectWebSocket();  // 等待 WebSocket 连接成功
     } catch (error) {
       console.error('WebSocket 连接失败，无法发送消息');
       return;
     }
   }
-  // todo 重新连接 为等待是否连接直接进行下一步问题
+  selectLanguages = language;
   sendMessage(getMsg('TEST_INDIVIDUAL', 'INIT', `${language}`));
 }
 
@@ -396,23 +416,12 @@ const handleKeydown = (event) => {
   if (individualTestStatus.value === 'ING' && event.ctrlKey && event.key === 'Enter') {
     individualSubmit();
   }
-  // 监听 Ctrl+C (复制)
-  if (event.ctrlKey && (event.key === 'c' || event.key === 'C')) {
-    console.log('复制操作');
-    // 在这里执行复制相关的操作
-  }
-
-  // 监听 Ctrl+V (粘贴)
-  if (event.ctrlKey && (event.key === 'v' || event.key === 'V')) {
-    console.log('粘贴操作');
-    // 在这里执行粘贴相关的操作
-  }
 };
 
 /** 个人测试-输入文字处理 */
 const individualInputData = (event) => {
 
-  if (individualTestStatus.value === 'INIT') {
+  if (ws && individualTestStatus.value === 'INIT') {
     console.log('个人测试-输入文字处理开始')
     startIndividualTestIngTimer();
     startIndividualTestCollectTimer();
@@ -442,7 +451,7 @@ const startIndividualTestCollectTimer = () => {
     sendMessage(getMsg('TEST_INDIVIDUAL', 'COLLECT', ''));
     clearTimeout(individualTestCollectTimer)
     startIndividualTestCollectTimer();
-  }, 10000);
+  }, 20000);
 };
 const startIndividualTestAppendTimer = () => {
   const textarea = document.getElementById('individual_source_text');
@@ -456,6 +465,7 @@ const startIndividualTestAppendTimer = () => {
         // 当拼音在未确认的情况下，不更新sourceContent的值，否则会刷新元素，导致拼音未确认数据不显示
         sourceContent.value += bufferData.value.individualAppendData[individualAppendIndex.value];
         individualAppendIndex.value++;
+        scoreInfo.value.tipMsg = '';
       }
       scoreInfo.value.speed = bufferData.value.speed;
       scoreInfo.value.accuracy = bufferData.value.accuracy;
@@ -497,12 +507,12 @@ a-card {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 20px;
+  gap: 1.5rem;
   min-height: 70vh;
 }
 
 .mode-select-item {
-  width: 40%;
+  width: 30%;
   height: auto
 }
 
@@ -523,6 +533,18 @@ a-card {
   margin: 4rem auto 0 auto;
 }
 
+.test-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.font-change,
+.showing-data,
+.option-btn {
+  display: inline-block;
+}
+
 .flex-container {
   display: flex;
 }
@@ -530,6 +552,7 @@ a-card {
 .custom-textarea {
   font-size: 18px;
   box-sizing: border-box;
+  user-select: none;
 }
 
 @media (max-width: 768px) {
