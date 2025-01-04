@@ -8,9 +8,8 @@
           <span>点击更换头像</span>
         </template>
         <div style="position: relative; display: inline-block;" @click="showDrawer">
-          <a-avatar v-if="isValidAvatar" :src="avatarSrc" class="img">
+          <a-avatar :src="avatarSrc" class="img">
           </a-avatar>
-          <a-avatar v-else class="img"></a-avatar>
         </div>
       </a-tooltip>
       <p>用户名:</p><a-input v-model:value="user.nickName" :style="{ width: '250px' }" :readonly="!isEditable" />

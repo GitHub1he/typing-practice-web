@@ -1,9 +1,7 @@
 <template>
   <div class="userNavBar">
     <div class="avatar">
-      <a-avatar v-if="utils.isValidAvatar(avatarNumber)" :src="utils.getAvatarSrc(avatarNumber)">
-      </a-avatar>
-      <a-avatar v-else>
+      <a-avatar :src="utils.getAvatarSrc(avatarNumber)">
       </a-avatar>
       <div>
         {{ user.nickName }}

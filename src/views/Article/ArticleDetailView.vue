@@ -18,9 +18,7 @@
             <a-col :xs="24" :sm="24" :md="24" :lg="17" :xl="17" :offset="1">
               <div class="info">
                 <span @click="routeUserInfo(detail.authorId)" class="username">
-                  <a-avatar v-if="utils.isValidAvatar(detail.avatar)" :src="utils.getAvatarSrc(detail.avatar)">
-                  </a-avatar>
-                  <a-avatar v-else>
+                  <a-avatar :src="utils.getAvatarSrc(detail.avatar)">
                   </a-avatar>
                   {{ detail.authorName }}
                 </span>

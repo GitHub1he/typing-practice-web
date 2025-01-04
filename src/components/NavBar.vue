@@ -39,9 +39,8 @@
         <router-link :to="{ name: 'user' }">
           <a-menu-item key="user">
             <a-badge dot>
-              <a-avatar v-if="isValidAvatar" :src="avatarSrc">
+              <a-avatar :src="avatarSrc">
               </a-avatar>
-              <a-avatar v-else></a-avatar>
             </a-badge>
           </a-menu-item>
         </router-link>
@@ -54,19 +53,18 @@
 import { ref } from 'vue';
 import { useStore } from 'vuex';
 import { computed } from 'vue';
+import utils from '@/api/utils/generalUtil';
 export default {
   setup() {
     const current = ref(['mail']);
     const store = useStore();
     const loginStatus = computed(() => store.state.user.isLogin);
-    const avatarNumber = store.state.user.user.avatar;
-    const isValidAvatar = ['1', '2', '3', '4'].includes(avatarNumber);
-    const avatarSrc = isValidAvatar ? require(`@/assets/images/avatar/${avatarNumber}.jpg`) : null;
+    const avatar = store.state.user.user.avatar;
+    const avatarSrc = utils.getAvatarSrc(avatar);
     return {
       current,
       loginStatus,
       store,
-      isValidAvatar,
       avatarSrc
     };
   },

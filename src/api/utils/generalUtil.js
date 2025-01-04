@@ -27,7 +27,7 @@ const utils = {
    * @returns 头像imgPath
    */
   getAvatarSrc(avatar) {
-    return utils.isValidAvatar(avatar) ? require(`@/assets/images/avatar/${avatar}.jpg`) : null;
+    return utils.isValidAvatar(avatar) ? require(`@/assets/images/avatar/${avatar}.jpg`) : avatar;
   },
 
   objIsEmpty(obj) {

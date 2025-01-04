@@ -16,9 +16,7 @@
           <span v-else class="rank">{{ item.ranking }}</span>
         </a-col>
         <a-col :span="4">
-          <a-avatar v-if="utils.isValidAvatar(item.avatar)" :src="utils.getAvatarSrc(item.avatar)">
-          </a-avatar>
-          <a-avatar v-else>
+          <a-avatar :src="utils.getAvatarSrc(item.avatar)">
           </a-avatar>
         </a-col>
         <a-col :span="6">{{ item.nickName }}</a-col>
