@@ -44,6 +44,11 @@ const routes = [
     component: () => import('../views/LoginView.vue')
   },
   {
+    path: '/loginByGithub',
+    name: 'loginByGithub',
+    component: () => import('../views/User/RedirectToGithub.vue')
+  },
+  {
     path: '/user',
     name: 'user',
     component: () => import('../views/User/UserView.vue'),
@@ -75,7 +80,7 @@ const router = createRouter({
 
 // 在路由导航前触发获取字典数据的操作
 router.beforeEach((to, from, next) => {
-  if (to.path === '/login') return next();
+  if (['/login', '/loginByGithub'].includes(to.path)) return next();
   if (store.state.user.isLogin) {
     return next();
   } else {

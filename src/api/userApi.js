@@ -23,6 +23,10 @@ const userApi = {
   loginByYzm(params) {
     return axios.post(`/user/loginByYzm`, params);
   },
+  // github登录
+  loginByGithub(code) {
+    return axios.get(`/user/loginByGithub?code=${code}`);
+  },
   // 注册
   register(params) {
     return axios.post(`/user/account/register`, params);
