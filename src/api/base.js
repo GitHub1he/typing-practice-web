@@ -12,7 +12,7 @@ if (process.env.NODE_ENV == 'development') {
   };
 } else if (process.env.NODE_ENV == 'production') {
   baseUrl = {
-    webUrl: 'http://totry.vip',
+    webUrl: 'https://totry.vip',
     httpUrl: 'https://totry.vip/api',
     wsUrl: 'wss://totry.vip/ws'
   };

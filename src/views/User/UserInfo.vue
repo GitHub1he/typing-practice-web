@@ -58,8 +58,7 @@ const user = ref({ ...store.state.user.user });
 const gender = ref(user.value.gender?.toString());
 
 const avatarNumber = ref(store.state.user.user.avatar);
-const isValidAvatar = computed(() => ['1', '2', '3', '4'].includes(avatarNumber.value));
-const avatarSrc = computed(() => isValidAvatar.value ? require(`@/assets/images/avatar/${avatarNumber.value}.jpg`) : null);
+const avatarSrc = computed(() => utils.getAvatarSrc(avatarNumber.value));
 const avatarn = ref(store.state.user.user.avatar);
 const isEditable = computed(() => user.value.userId === store.state.user.user.userId);
 
