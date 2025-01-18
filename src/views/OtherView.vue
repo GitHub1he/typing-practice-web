@@ -238,6 +238,12 @@ const getMsg = (type, contentType, data) => {
       reqMsg.head.msgContentType = contentType;
       reqMsg.body.data = data;
       break;
+    case 'Match':
+      // 匹配
+      reqMsg.head.msgType = 5
+      reqMsg.head.msgContentType = contentType;
+      reqMsg.body.data = data;
+      break;
     default:
       // 其他
       reqMsg.head.msgType = 9

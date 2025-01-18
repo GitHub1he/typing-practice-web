@@ -1,5 +1,5 @@
 <template>
-
+  <!-- 右上角状态显示 -->
   <div style="float: right;">
     <a-tag color="success" v-if="wsStatus === 'connected'" @click="wsLogout()">
       <template #icon>
@@ -27,7 +27,8 @@
     </a-tooltip>
   </div>
 
-  <div class="mode-select" v-if="individualTestStatus === 'CHANGE_MODE'">
+  <!-- 模式选择 -->
+  <div class="mode-select" v-if="currentModeSelect === 'MODE_CHANGE_MODE'">
 
     <a-card class="mode-select-item" :hoverable="true" title="个人练习">
       <div v-for="(item, index) in languages" :key="item.itemCode || index">
@@ -37,6 +38,13 @@
       <a-card class="language-card" title="随机" @click="StartIndividualTest('')" hoverable></a-card>
     </a-card>
 
+    <a-card class="mode-select-item" :hoverable="true" title="竞赛">
+      <div v-for="(item, index) in matchSelect" :key="item.itemCode || index">
+        <a-card class="language-card" :title="item.itemName" @click="StartMatch(item.itemCode)"
+          style="margin-bottom: 5px;" hoverable></a-card>
+      </div>
+    </a-card>
+
     <a-card class="mode-select-item" title="其他模式">
       <p>暂未开放</p>
     </a-card>
@@ -44,7 +52,8 @@
 
 
   <div class="test-individual" @paste.capture.prevent=false @copy.capture.prevent=false @keydown="handleKeydown"
-    tabindex="0" v-if="individualTestStatus === 'INIT' || individualTestStatus === 'ING'">
+    tabindex="0"
+    v-if="currentModeSelect === 'MODE_INDIVIDUAL_TEST_INIT' || currentModeSelect === 'MODE_INDIVIDUAL_TEST_ING'">
     <div class="test-header">
       <div class="font-change">
         <a-button type="dashed" @click="increaseFontSize()">+</a-button>
@@ -72,8 +81,17 @@
     </div>
   </div>
 
-  <div class="test-individual" v-if="individualTestStatus === 'END'">
+  <div class="test-individual" v-if="currentModeSelect === 'MODE_INDIVIDUAL_TEST_END'">
     <AfterPracticeView />
+  </div>
+
+  <div class="test-individual" v-if="currentModeSelect === 'MODE_MATCH_ING'">
+    MATCHING(匹配中)
+    <a-button type="primary" @click="cancelMatching()">取消匹配</a-button>
+  </div>
+
+  <div class="test-individual" v-if="currentModeSelect === 'MODE_MATCH_SUCCESS'">
+    MATCH_SUCCESS(匹配成功)
   </div>
 
   <a-modal v-model:open="confirmReConnect" title="是否确认登录" :confirm-loading="confirmLoading" @ok="handleConfirmReConnect"
@@ -111,6 +129,12 @@ let confirmCode;
 let selectLanguages = null;
 
 const languages = store.state.article.articleLanguage;
+const matchSelect = [
+  {
+    "itemCode": 0,
+    "itemName": "激情1V1"
+  }
+];
 const fontSize = ref(16);
 const isSideBySide = ref(false);//视图，文本框上下/左右分布
 const sourceContent = ref('');
@@ -123,7 +147,7 @@ const individualAppendIndex = ref(0); // 个人测试追加文章数据
 const bufferData = ref({ individualAppendData: "", accuracy: "", speed: "", actualDuration: "", });// 个人测试追加文章数据,防止直接更新sourceContent会组件刷新，导致中文未确认字符丢失
 const typingInterval = 100; // 设置打字机字符显示间隔（毫秒）
 const isComposing = ref(false); // 当前是否中文输入状态
-const individualTestStatus = ref('CHANGE_MODE'); // 个人测试是否已开始
+const currentModeSelect = ref('MODE_CHANGE_MODE'); // 个人测试是否已开始
 const scoreInfo = ref({});
 provide('scoreInfo', scoreInfo);
 
@@ -202,13 +226,13 @@ const connectWebSocket = () => {
             case 'C0002':
               // 连接失败
               ws.close();
-              individualTestStatus.value = 'CHANGE_MODE';
+              currentModeSelect.value = 'MODE_CHANGE_MODE';
               break;
             case 'C0003':
               // 被重连
               ws.close();
               utils.tip('异地登录', 'warning')
-              individualTestStatus.value = 'CHANGE_MODE';
+              currentModeSelect.value = 'MODE_CHANGE_MODE';
               break;
             case 'C0004':
               // 登出
@@ -216,7 +240,7 @@ const connectWebSocket = () => {
               break;
             case 'C0006':
               // 提示
-              if (individualTestStatus.value === 'ING') {
+              if (currentModeSelect.value === 'MODE_INDIVIDUAL_TEST_ING') {
                 scoreInfo.value.tipMsg = res.msg;
               } else {
                 utils.tip(res.msg, "warning");
@@ -225,7 +249,7 @@ const connectWebSocket = () => {
             case 'C4000':
               // sourceContent 值替换会触发视图的重新渲染
               if (res.msg === 'INIT') {
-                individualTestStatus.value = 'INIT'
+                currentModeSelect.value = 'MODE_INDIVIDUAL_TEST_INIT'
                 sourceContent.value = res.data
               } if (res.msg === 'ING') {
                 const parseDate = JSON.parse(res.data);
@@ -249,13 +273,29 @@ const connectWebSocket = () => {
                 // 展示练习情况
                 clearIndividualTestTimer();
                 scoreInfo.value = JSON.parse(res.data);
-                individualTestStatus.value = 'END'
+                currentModeSelect.value = 'MODE_INDIVIDUAL_TEST_END'
                 wsLogout();
               }
               break;
             case 'C4100':
               if (res.msg === 'INIT') {
                 StartIndividualTest(selectLanguages);
+              }
+              break;
+            case 'C5000':
+              if (res.msg === 'MATCHING') {
+                currentModeSelect.value = 'MODE_MATCH_ING'
+              } else if (res.msg === 'CANCEL_MATCH') {
+                utils.tip("取消匹配", "info");
+                currentModeSelect.value = 'MODE_CHANGE_MODE'
+              } else if (res.msg === 'MATCH_SUCCESS') {
+                utils.tip("匹配成功", "info");
+                const parseDate = JSON.parse(res.data);
+                console.log("匹配成功：", parseDate)
+                currentModeSelect.value = 'MODE_MATCH_SUCCESS'
+              } else if (res.msg === 'MATCH_FAIL') {
+                utils.tip("匹配失败", "error");
+                currentModeSelect.value = 'MODE_CHANGE_MODE'
               }
               break;
             default:
@@ -316,6 +356,9 @@ const sendMessage = (data) => {
 
 /**
  * 获取不同类型的报文
+ * @param type 消息类型：'CONNECT'、'RECONNECT'、'LOGIN_OUT'、'TEST_INDIVIDUAL'、'MATCH'
+ * @param contentType head.msgContentType
+ * @param data body.data
  */
 const getMsg = (type, contentType, data) => {
   const reqMsg = new ReqMsg();
@@ -339,6 +382,12 @@ const getMsg = (type, contentType, data) => {
     case 'TEST_INDIVIDUAL':
       // 个人测试
       reqMsg.head.msgType = 4
+      reqMsg.head.msgContentType = contentType;
+      reqMsg.body.data = data;
+      break;
+    case 'MATCH':
+      // 匹配
+      reqMsg.head.msgType = 5
       reqMsg.head.msgContentType = contentType;
       reqMsg.body.data = data;
       break;
@@ -382,6 +431,32 @@ const StartIndividualTest = async (language) => {
   sendMessage(getMsg('TEST_INDIVIDUAL', 'INIT', `${language}`));
 }
 
+const StartMatch = async (matchMode) => {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    try {
+      console.info('WebSocket 开始连接');
+      await api.baseApi.getWsAddr();
+      await connectWebSocket();  // 等待 WebSocket 连接成功
+    } catch (error) {
+      console.error('WebSocket 连接失败，无法发送消息');
+      return;
+    }
+  }
+  currentModeSelect.value = 'MODE_MATCH_ING'
+
+  sendMessage(getMsg('MATCH', 'START', JSON.stringify({ "matchMode": `${matchMode}` })));
+}
+
+const cancelMatching = () => {
+  if (currentModeSelect.value === 'MODE_MATCH_ING') {
+    sendMessage(getMsg('MATCH', 'CANCEL'));
+
+    currentModeSelect.value = 'MODE_CHANGE_MODE';
+  } else {
+    utils.tip("当前非匹配中状态", "warning");
+  }
+}
+
 const textareaAutoSize = computed(() => {
   return {
     height: isSideBySide.value ? '31.875rem' : '16.25rem',
@@ -413,7 +488,7 @@ const handleCompositionEnd = () => {
 };
 const handleKeydown = (event) => {
   // 监听 Ctrl+Enter 的方法
-  if (individualTestStatus.value === 'ING' && event.ctrlKey && event.key === 'Enter') {
+  if (currentModeSelect.value === 'MODE_INDIVIDUAL_TEST_ING' && event.ctrlKey && event.key === 'Enter') {
     individualSubmit();
   }
 };
@@ -421,19 +496,19 @@ const handleKeydown = (event) => {
 /** 个人测试-输入文字处理 */
 const individualInputData = (event) => {
 
-  if (ws && individualTestStatus.value === 'INIT') {
+  if (ws && currentModeSelect.value === 'MODE_INDIVIDUAL_TEST_INIT') {
     console.log('个人测试-输入文字处理开始')
     startIndividualTestIngTimer();
     startIndividualTestCollectTimer();
     startIndividualTestAppendTimer();
   }
-  individualTestStatus.value = 'ING';
+  currentModeSelect.value = 'MODE_INDIVIDUAL_TEST_ING';
   inputContent.value = event.target.value;
 }
 /** 个人测试-发送当前用户输入数据 */
 const startIndividualTestIngTimer = () => {
   individualTestIngTimer = setTimeout(() => {
-    if (individualTestStatus.value !== 'ING') {
+    if (currentModeSelect.value !== 'MODE_INDIVIDUAL_TEST_ING') {
       clearIndividualTestTimer();
       return;
     }
@@ -444,7 +519,7 @@ const startIndividualTestIngTimer = () => {
 };
 const startIndividualTestCollectTimer = () => {
   individualTestCollectTimer = setTimeout(() => {
-    if (individualTestStatus.value !== 'ING') {
+    if (currentModeSelect.value !== 'MODE_INDIVIDUAL_TEST_ING') {
       clearIndividualTestTimer();
       return;
     }
@@ -456,7 +531,7 @@ const startIndividualTestCollectTimer = () => {
 const startIndividualTestAppendTimer = () => {
   const textarea = document.getElementById('individual_source_text');
   individualTestAppendTimer = setTimeout(() => {
-    if (individualTestStatus.value !== 'ING') {
+    if (currentModeSelect.value !== 'MODE_INDIVIDUAL_TEST_ING') {
       clearIndividualTestTimer();
       return;
     }
@@ -485,8 +560,8 @@ const clearIndividualTestTimer = () => {
 
 /** 个人测试-提交数据 */
 const individualSubmit = () => {
-  if (individualTestStatus.value === 'ING') {
-    individualTestStatus.value = 'END';
+  if (currentModeSelect.value === 'MODE_INDIVIDUAL_TEST_ING') {
+    currentModeSelect.value = 'MODE_INDIVIDUAL_TEST_END';
     clearIndividualTestTimer();
     sendMessage(getMsg('TEST_INDIVIDUAL', 'END', inputContent.value));
   } else {
