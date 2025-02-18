@@ -64,6 +64,7 @@
             <a-row :gutter="16">
               <a-col :span="24">
                 <a-form-item label="描述" name="summary">
+                  <a-checkbox v-model:checked="articleData.autoGeneration">自动生成</a-checkbox>
                   <a-textarea v-model:value="articleData.summary" :rows="2" placeholder="请输入你的文章描述" />
                 </a-form-item>
               </a-col>
@@ -282,6 +283,7 @@ const articleData = ref({
   tagMask: [],
   summary: '',
   content: '',
+  autoGeneration: false,
 });
 
 const rules = {

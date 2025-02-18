@@ -40,6 +40,7 @@
       <a-row :gutter="16">
         <a-col :span="24">
           <a-form-item label="描述" name="summary">
+            <a-checkbox v-model:checked="form.autoGeneration">自动生成</a-checkbox>
             <a-textarea v-model:value="form.summary" :rows="2" placeholder="请输入你的文章描述" />
           </a-form-item>
         </a-col>
@@ -79,6 +80,7 @@ watch(() => props.updataId, (newListData) => {
       form.value.language = res.data.data.language;
       form.value.tagMask = res.data.data.tags;
       form.value.content = res.data.data.content;
+      form.value.autoGeneration = res.data.data.autoGeneration || false;
       console.log(detail.value);
     });
   } else {
@@ -194,6 +196,7 @@ const form = ref({
   tagMask: [],
   summary: '',
   content: '',
+  autoGeneration: false,
 });
 
 const rules = {
