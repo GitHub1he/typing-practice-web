@@ -86,12 +86,56 @@
   </div>
 
   <div class="test-individual" v-if="currentModeSelect === 'MODE_MATCH_ING'">
-    MATCHING(匹配中)
-    <a-button type="primary" @click="cancelMatching()">取消匹配</a-button>
+    <div class="matching-container">
+      <div class="matching-circle">
+        <div class="circle-dots">
+          <span v-for="i in 4" :key="i" class="dot"></span>
+        </div>
+        <div class="matching-text">
+          <div class="matching-number">{{ matchingTime }}</div>
+          <div class="matching-status">匹配中...</div>
+        </div>
+      </div>
+      <a-button type="primary" class="cancel-match-btn" @click="cancelMatching">取消匹配</a-button>
+    </div>
   </div>
 
   <div class="test-individual" v-if="currentModeSelect === 'MODE_MATCH_SUCCESS'">
-    MATCH_SUCCESS(匹配成功)
+    <div class="match-success-container">
+      <div class="match-overlay">
+        <div class="match-content">
+          <div class="players-container">
+            <div class="player-card" :class="{ 'ready': matchInfo?.player1?.ready }">
+              <div class="player-avatar">
+                <a-avatar :src="utils.getAvatarSrc(matchInfo?.player1?.avatar || '1')">
+                </a-avatar>
+              </div>
+              <div class="player-name">{{ matchInfo?.player1?.nickname || '玩家1' }}</div>
+              <div class="ready-status">{{ matchInfo?.player1?.ready ? '已准备' : '未准备' }}</div>
+            </div>
+            <div class="vs-text">VS</div>
+            <div class="player-card" :class="{ 'ready': matchInfo?.player2?.ready }">
+              <div class="player-avatar">
+                <a-avatar :src="utils.getAvatarSrc(matchInfo?.player2?.avatar || '1')"></a-avatar>
+              </div>
+              <div class="player-name">{{ matchInfo?.player2?.nickname || '玩家2' }}</div>
+              <div class="ready-status">{{ matchInfo?.player2?.ready ? '已准备' : '未准备' }}</div>
+            </div>
+          </div>
+
+          <template v-if="currentMatchMode === '0'">
+            <a-button type="primary" class="ready-btn" :disabled="isReady" @click="handleReady">
+              {{ isReady ? '已准备' : '准备' }}
+            </a-button>
+          </template>
+          <template v-else>
+            <div class="other-mode-info">
+              <p>其他比赛模式正在开发中...</p>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
   </div>
 
   <a-modal v-model:open="confirmReConnect" title="是否确认登录" :confirm-loading="confirmLoading" @ok="handleConfirmReConnect"
@@ -127,11 +171,16 @@ let retryCount = 0;
 const maxRetries = 1;
 let confirmCode;
 let selectLanguages = null;
+const matchingTime = ref(0);
+let matchingTimer = null;
+const matchInfo = ref(null); // 存储匹配信息
+const isReady = ref(false); // 准备状态
+const currentMatchMode = ref(''); // 存储当前比赛模式
 
 const languages = store.state.article.articleLanguage;
 const matchSelect = [
   {
-    "itemCode": 0,
+    "itemCode": '0',
     "itemName": "激情1V1"
   }
 ];
@@ -292,10 +341,29 @@ const connectWebSocket = () => {
                 utils.tip("匹配成功", "info");
                 const parseDate = JSON.parse(res.data);
                 console.log("匹配成功：", parseDate)
+                matchInfo.value = {
+                  ...parseDate,
+                  player1: {
+                    ...parseDate.player1,
+                    ready: false
+                  },
+                  player2: {
+                    ...parseDate.player2,
+                    ready: false
+                  }
+                };
                 currentModeSelect.value = 'MODE_MATCH_SUCCESS'
               } else if (res.msg === 'MATCH_FAIL') {
                 utils.tip("匹配失败", "error");
                 currentModeSelect.value = 'MODE_CHANGE_MODE'
+              } else if (res.msg === 'READY') {
+                // 处理玩家准备状态更新
+                const parseDate = JSON.parse(res.data);
+                if (parseDate.userId === matchInfo.value.player1.userId) {
+                  matchInfo.value.player1.ready = true;
+                } else if (parseDate.userId === matchInfo.value.player2.userId) {
+                  matchInfo.value.player2.ready = true;
+                }
               }
               break;
             default:
@@ -442,15 +510,21 @@ const StartMatch = async (matchMode) => {
       return;
     }
   }
-  currentModeSelect.value = 'MODE_MATCH_ING'
+  currentModeSelect.value = 'MODE_MATCH_ING';
+  currentMatchMode.value = matchMode.toString(); // 保存比赛模式
+  // 开始计时
+  matchingTime.value = 0;
+  matchingTimer = setInterval(() => {
+    matchingTime.value++;
+  }, 1000);
 
   sendMessage(getMsg('MATCH', 'START', JSON.stringify({ "matchMode": `${matchMode}` })));
 }
 
 const cancelMatching = () => {
   if (currentModeSelect.value === 'MODE_MATCH_ING') {
+    clearInterval(matchingTimer);
     sendMessage(getMsg('MATCH', 'CANCEL'));
-
     currentModeSelect.value = 'MODE_CHANGE_MODE';
   } else {
     utils.tip("当前非匹配中状态", "warning");
@@ -569,6 +643,18 @@ const individualSubmit = () => {
   }
 }
 
+/** 匹配成功后准备 */
+const handleReady = () => {
+  if (!matchInfo.value?.roomId) {
+    utils.tip("房间信息获取失败", "error");
+    return;
+  }
+  isReady.value = true;
+  sendMessage(getMsg('MATCH', 'READY', JSON.stringify({
+    roomId: matchInfo.value.roomId
+  })));
+};
+
 </script>
 
 <style scoped>
@@ -639,5 +725,205 @@ a-card {
     width: 70%;
     height: auto
   }
+}
+
+.matching-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 70vh;
+}
+
+.matching-circle {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: #3f51b5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+.circle-dots {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  animation: rotate 4s linear infinite;
+}
+
+.dot {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #00ffff;
+  border-radius: 50%;
+}
+
+.dot:nth-child(1) {
+  top: 10%;
+  left: 50%;
+}
+
+.dot:nth-child(2) {
+  top: 50%;
+  right: 10%;
+}
+
+.dot:nth-child(3) {
+  bottom: 10%;
+  left: 50%;
+}
+
+.dot:nth-child(4) {
+  top: 50%;
+  left: 10%;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.matching-text {
+  text-align: center;
+  color: white;
+  z-index: 1;
+}
+
+.matching-number {
+  font-size: 3rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.matching-status {
+  font-size: 1.2rem;
+}
+
+.cancel-match-btn {
+  font-size: 1.2rem;
+  padding: 0.5rem 2rem;
+  height: auto;
+  background-color: #4CAF50;
+  border-color: #4CAF50;
+}
+
+.cancel-match-btn:hover {
+  background-color: #45a049;
+  border-color: #45a049;
+}
+
+
+
+
+.match-success-container {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.match-overlay {
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.match-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rem;
+}
+
+.players-container {
+  display: flex;
+  align-items: center;
+  gap: 3rem;
+}
+
+.player-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.player-card.ready {
+  background: rgba(82, 196, 26, 0.2);
+  box-shadow: 0 0 15px rgba(82, 196, 26, 0.3);
+}
+
+.player-avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid #666;
+  transition: all 0.3s ease;
+}
+
+.player-card.ready .player-avatar {
+  border-color: #52c41a;
+}
+
+.player-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.player-name {
+  color: white;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.ready-status {
+  color: #666;
+  font-size: 1rem;
+}
+
+.player-card.ready .ready-status {
+  color: #52c41a;
+}
+
+.vs-text {
+  color: white;
+  font-size: 2rem;
+  font-weight: bold;
+}
+
+.ready-btn {
+  padding: 0.8rem 3rem;
+  font-size: 1.2rem;
+  height: auto;
+  border-radius: 2rem;
+}
+
+.ready-btn:not(:disabled) {
+  background: #1890ff;
+  border-color: #1890ff;
+}
+
+.ready-btn:not(:disabled):hover {
+  background: #40a9ff;
+  border-color: #40a9ff;
 }
 </style>
