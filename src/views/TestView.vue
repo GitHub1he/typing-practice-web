@@ -107,18 +107,18 @@
           <div class="players-container">
             <div class="player-card" :class="{ 'ready': matchInfo?.player1?.ready }">
               <div class="player-avatar">
-                <a-avatar :src="utils.getAvatarSrc(matchInfo?.player1?.avatar || '1')">
+                <a-avatar :size="100" :src="utils.getAvatarSrc(matchInfo?.player1?.avatar || '1')">
                 </a-avatar>
               </div>
-              <div class="player-name">{{ matchInfo?.player1?.nickname || '玩家1' }}</div>
+              <div class="player-name">{{ matchInfo?.player1?.nickName || '玩家1' }}</div>
               <div class="ready-status">{{ matchInfo?.player1?.ready ? '已准备' : '未准备' }}</div>
             </div>
             <div class="vs-text">VS</div>
             <div class="player-card" :class="{ 'ready': matchInfo?.player2?.ready }">
               <div class="player-avatar">
-                <a-avatar :src="utils.getAvatarSrc(matchInfo?.player2?.avatar || '1')"></a-avatar>
+                <a-avatar :size="100" :src="utils.getAvatarSrc(matchInfo?.player2?.avatar || '1')"></a-avatar>
               </div>
-              <div class="player-name">{{ matchInfo?.player2?.nickname || '玩家2' }}</div>
+              <div class="player-name">{{ matchInfo?.player2?.nickName || '玩家2' }}</div>
               <div class="ready-status">{{ matchInfo?.player2?.ready ? '已准备' : '未准备' }}</div>
             </div>
           </div>
@@ -342,13 +342,13 @@ const connectWebSocket = () => {
                 const parseDate = JSON.parse(res.data);
                 console.log("匹配成功：", parseDate)
                 matchInfo.value = {
-                  ...parseDate,
+                  roomId: parseDate.roomId,
                   player1: {
-                    ...parseDate.player1,
+                    ...parseDate.players[0],
                     ready: false
                   },
                   player2: {
-                    ...parseDate.player2,
+                    ...parseDate.players[1],
                     ready: false
                   }
                 };
@@ -356,14 +356,34 @@ const connectWebSocket = () => {
               } else if (res.msg === 'MATCH_FAIL') {
                 utils.tip("匹配失败", "error");
                 currentModeSelect.value = 'MODE_CHANGE_MODE'
-              } else if (res.msg === 'READY') {
+              }
+              break;
+            case 'C5100':
+              if (res.msg === 'READY') {
                 // 处理玩家准备状态更新
                 const parseDate = JSON.parse(res.data);
-                if (parseDate.userId === matchInfo.value.player1.userId) {
-                  matchInfo.value.player1.ready = true;
-                } else if (parseDate.userId === matchInfo.value.player2.userId) {
-                  matchInfo.value.player2.ready = true;
-                }
+                console.log("准备：", parseDate);
+                // 更新整个玩家列表的状态
+                matchInfo.value = {
+                  ...matchInfo.value,
+                  player1: {
+                    ...matchInfo.value.player1,
+                    ready: parseDate.players[0].ready
+                  },
+                  player2: {
+                    ...matchInfo.value.player2,
+                    ready: parseDate.players[1].ready
+                  }
+                };
+              } else if (res.msg === 'NONROOM') {
+                utils.tip("准备失败，房间不存在", "error");
+                currentModeSelect.value = 'MODE_CHANGE_MODE'
+              }
+              break;
+            case 'C6000':
+              if (res.msg === 'START') {
+                currentModeSelect.value = 'MODE_INDIVIDUAL_TEST_INIT'
+                sourceContent.value = res.data
               }
               break;
             default:
@@ -428,7 +448,7 @@ const sendMessage = (data) => {
  * @param contentType head.msgContentType
  * @param data body.data
  */
-const getMsg = (type, contentType, data) => {
+const getMsg = (type, contentType, data, roomId) => {
   const reqMsg = new ReqMsg();
   reqMsg.head.userId = store.state.user.user.userId;
   // reqMsg.head.access = store.state.user.access;
@@ -437,7 +457,7 @@ const getMsg = (type, contentType, data) => {
     case 'CONNECT':
       // 建立连接
       reqMsg.head.msgType = 1
-      break
+      break;
     case 'RECONNECT':
       // 建立连接
       reqMsg.head.msgType = 2
@@ -456,6 +476,13 @@ const getMsg = (type, contentType, data) => {
     case 'MATCH':
       // 匹配
       reqMsg.head.msgType = 5
+      reqMsg.head.msgContentType = contentType;
+      reqMsg.body.data = data;
+      break;
+    case 'PKONEONONE':
+      // 一对一
+      reqMsg.head.msgType = 6
+      reqMsg.head.roomId = roomId;
       reqMsg.head.msgContentType = contentType;
       reqMsg.body.data = data;
       break;
@@ -650,9 +677,9 @@ const handleReady = () => {
     return;
   }
   isReady.value = true;
-  sendMessage(getMsg('MATCH', 'READY', JSON.stringify({
+  sendMessage(getMsg('PKONEONONE', 'READY', JSON.stringify({
     roomId: matchInfo.value.roomId
-  })));
+  }), matchInfo.value.roomId.toString()));
 };
 
 </script>
@@ -756,10 +783,12 @@ a-card {
 
 .dot {
   position: absolute;
-  width: 10px;
-  height: 10px;
-  background: #00ffff;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
+  overflow: hidden;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
 }
 
 .dot:nth-child(1) {
@@ -821,8 +850,10 @@ a-card {
   border-color: #45a049;
 }
 
-
-
+/* 去除全局滚动条 */
+:root {
+  overflow: hidden;
+}
 
 .match-success-container {
   width: 100%;
@@ -830,12 +861,15 @@ a-card {
   display: flex;
   justify-content: center;
   align-items: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  overflow: hidden;
 }
 
 .match-overlay {
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -851,7 +885,7 @@ a-card {
 .players-container {
   display: flex;
   align-items: center;
-  gap: 3rem;
+  gap: 4rem;
 }
 
 .player-card {
@@ -860,14 +894,16 @@ a-card {
   align-items: center;
   gap: 1rem;
   padding: 2rem;
-  border-radius: 1rem;
-  background: rgba(255, 255, 255, 0.1);
+  border-radius: 1.5rem;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(5px);
   transition: all 0.3s ease;
+  box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
 }
 
 .player-card.ready {
-  background: rgba(82, 196, 26, 0.2);
-  box-shadow: 0 0 15px rgba(82, 196, 26, 0.3);
+  background: rgba(82, 196, 26, 0.15);
+  box-shadow: 0 8px 32px rgba(82, 196, 26, 0.2);
 }
 
 .player-avatar {
@@ -875,55 +911,58 @@ a-card {
   height: 100px;
   border-radius: 50%;
   overflow: hidden;
-  border: 3px solid #666;
+  border: 4px solid rgba(255, 255, 255, 0.3);
   transition: all 0.3s ease;
 }
 
 .player-card.ready .player-avatar {
-  border-color: #52c41a;
-}
-
-.player-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  border-color: rgba(82, 196, 26, 0.6);
 }
 
 .player-name {
   color: white;
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   font-weight: bold;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .ready-status {
-  color: #666;
-  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1.1rem;
 }
 
 .player-card.ready .ready-status {
   color: #52c41a;
+  font-weight: bold;
 }
 
 .vs-text {
   color: white;
-  font-size: 2rem;
+  font-size: 2.5rem;
   font-weight: bold;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .ready-btn {
-  padding: 0.8rem 3rem;
-  font-size: 1.2rem;
+  padding: 0.8rem 4rem;
+  font-size: 1.3rem;
   height: auto;
   border-radius: 2rem;
-}
-
-.ready-btn:not(:disabled) {
-  background: #1890ff;
-  border-color: #1890ff;
+  border: none;
+  background: linear-gradient(45deg, #1890ff, #40a9ff);
+  box-shadow: 0 4px 15px rgba(24, 144, 255, 0.3);
+  transition: all 0.3s ease;
 }
 
 .ready-btn:not(:disabled):hover {
-  background: #40a9ff;
-  border-color: #40a9ff;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(24, 144, 255, 0.4);
+  background: linear-gradient(45deg, #40a9ff, #69c0ff);
+}
+
+.ready-btn:disabled {
+  background: linear-gradient(45deg, #52c41a, #73d13d);
+  opacity: 0.8;
+  cursor: not-allowed;
 }
 </style>
