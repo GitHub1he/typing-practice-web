@@ -81,7 +81,47 @@
     </div>
   </div>
 
-  <div class="test-individual" v-if="currentModeSelect === 'MODE_INDIVIDUAL_TEST_END'">
+  <div class="test-individual" @paste.capture.prevent=false @copy.capture.prevent=false @keydown="handleKeydown"
+    tabindex="0" v-if="currentModeSelect === 'MODE_ONE_ON_ONE_ING'">
+    <div class="test-header">
+      <div class="font-change">
+        <a-button type="dashed" @click="increaseFontSize()">+</a-button>
+        <a-button type="dashed" @click="decreaseFontSize()">-</a-button>
+      </div>
+      <div class="showing-data">
+        <label>{{ inputContent.length }}/{{ sourceContent.length }}</label>
+        <label>正确率:{{ Number(scoreInfo.accuracy) * 100 }}% </label>
+        <label>速度:{{ scoreInfo.speed }}字/秒 </label>
+        <label>用时:{{ scoreInfo.actualDuration }}秒 </label>
+        <label style="color: red;">{{ scoreInfo.tipMsg }} </label>
+      </div>
+      <div class="option-btn">
+        <a-button type="dashed" @click="updateIsSideBySide()">改变布局</a-button>
+        <a-button type="primary" @click="oneOnOneSubmit()">提交成绩(Ctrl+Enter)</a-button>
+      </div>
+    </div>
+
+    <div :class="{ 'flex-container': isSideBySide }">
+      <a-textarea :value="sourceContent" id="oneOnOne_source_text" class="custom-textarea" readonly
+        :style="{ fontSize: fontSize + 'px', ...textareaAutoSize }" />
+      <a-textarea :value="inputContent" @input="oneOnOneInputData" @compositionstart="handleCompositionStart"
+        @compositionend="handleCompositionEnd" placeholder="请输入您的文字" class="custom-textarea"
+        :style="{ fontSize: fontSize + 'px', ...textareaAutoSize }" />
+    </div>
+  </div>
+
+  <!-- 添加对战倒计时组件 -->
+  <div class="test-individual" v-if="currentModeSelect === 'MODE_ONE_ON_ONE_WAIT'">
+    <div class="countdown-container">
+      <div class="countdown-circle">
+        <div class="countdown-number">{{ countdownTime }}</div>
+        <div class="countdown-text">对战即将开始</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="test-individual"
+    v-if="currentModeSelect === 'MODE_INDIVIDUAL_TEST_END' || currentModeSelect === 'MODE_ONE_ON_ONE_END'">
     <AfterPracticeView />
   </div>
 
@@ -198,6 +238,8 @@ const typingInterval = 100; // 设置打字机字符显示间隔（毫秒）
 const isComposing = ref(false); // 当前是否中文输入状态
 const currentModeSelect = ref('MODE_CHANGE_MODE'); // 个人测试是否已开始
 const scoreInfo = ref({});
+const countdownTime = ref(3); // 倒计时初始值
+let countdownTimer = null; // 倒计时定时器
 provide('scoreInfo', scoreInfo);
 
 // 获取消息类型
@@ -382,8 +424,35 @@ const connectWebSocket = () => {
               break;
             case 'C6000':
               if (res.msg === 'START') {
-                currentModeSelect.value = 'MODE_INDIVIDUAL_TEST_INIT'
+                // todo 增加currentModeSelect 为倒计时，到后端返回的时间后变化模式为ing
+                currentModeSelect.value = 'MODE_ONE_ON_ONE_WAIT'
                 sourceContent.value = res.data
+                startCountdown(); // 开始倒计时
+              } else if (res.msg === 'ING') {
+                const parseDate = JSON.parse(res.data);
+                console.log("比赛中：", parseDate);
+                bufferData.value.speed = parseDate.speed;
+                bufferData.value.accuracy = parseDate.accuracy;
+                bufferData.value.actualDuration = parseDate.actualDuration;
+                if (Number(sequence.value) + 1 === Number(parseDate.sequence)) {
+                  sequence.value = Number(parseDate.sequence);
+                  bufferData.value.individualAppendData += parseDate.appendData;
+                } else {
+                  console.log('次序不同,发送COLLECT报文')
+                  sendMessage(getMsg('TEST_INDIVIDUAL', 'COLLECT', ''))
+                }
+              } else if (res.msg === 'COLLECT') {
+                const parseDate = JSON.parse(res.data);
+                sourceContent.value = parseDate.appendData;
+                sequence.value = Number(parseDate.sequence);
+                bufferData.value.individualAppendData = '';
+                individualAppendIndex.value = 0;
+              } else if (res.msg === 'END') {
+                // 展示练习情况
+                clearIndividualTestTimer();
+                scoreInfo.value = JSON.parse(res.data);
+                currentModeSelect.value = 'MODE_ONE_ON_ONE_END'
+                wsLogout();
               }
               break;
             default:
@@ -421,7 +490,16 @@ const wsLogout = () => {
   }
   clearTimeout(webSocketPingTimer);
   clearIndividualTestTimer();
+  clearOneOnOneTimer();
+  if (countdownTimer) {
+    clearInterval(countdownTimer);
+  }
   wsStatus.value = 'disconnected'; // 更新状态为未连接
+  // 只有在非结束状态下才重置为MODE_CHANGE_MODE
+  if (currentModeSelect.value !== 'MODE_INDIVIDUAL_TEST_END' &&
+    currentModeSelect.value !== 'MODE_ONE_ON_ONE_END') {
+    currentModeSelect.value = 'MODE_CHANGE_MODE';
+  }
 };
 
 const startHeartbeat = () => {
@@ -589,8 +667,13 @@ const handleCompositionEnd = () => {
 };
 const handleKeydown = (event) => {
   // 监听 Ctrl+Enter 的方法
-  if (currentModeSelect.value === 'MODE_INDIVIDUAL_TEST_ING' && event.ctrlKey && event.key === 'Enter') {
+  if (currentModeSelect.value === 'MODE_INDIVIDUAL_TEST_ING'
+    && event.ctrlKey && event.key === 'Enter') {
     individualSubmit();
+  }
+  if (currentModeSelect.value === 'MODE_ONE_ON_ONE_ING'
+    && event.ctrlKey && event.key === 'Enter') {
+    oneOnOneSubmit();
   }
 };
 
@@ -599,6 +682,7 @@ const individualInputData = (event) => {
 
   if (ws && currentModeSelect.value === 'MODE_INDIVIDUAL_TEST_INIT') {
     console.log('个人测试-输入文字处理开始')
+    currentModeSelect.value = 'MODE_INDIVIDUAL_TEST_ING';
     startIndividualTestIngTimer();
     startIndividualTestCollectTimer();
     startIndividualTestAppendTimer();
@@ -665,6 +749,107 @@ const individualSubmit = () => {
     currentModeSelect.value = 'MODE_INDIVIDUAL_TEST_END';
     clearIndividualTestTimer();
     sendMessage(getMsg('TEST_INDIVIDUAL', 'END', inputContent.value));
+  } else {
+    utils.tip("输入文字开始", "warning");
+  }
+}
+
+// 添加倒计时函数
+const startCountdown = () => {
+  countdownTime.value = 3;
+
+  // 清除可能存在的旧定时器
+  if (countdownTimer) {
+    clearInterval(countdownTimer);
+  }
+
+  // 创建新的倒计时定时器
+  countdownTimer = setInterval(() => {
+    if (countdownTime.value > 1) {
+      countdownTime.value--;
+    } else {
+      clearInterval(countdownTimer);
+      // 倒计时结束，自动开始对战
+      // 模拟一个空的输入事件触发oneOnOneInputData
+      // 模拟一个空的输入事件触发oneOnOneInputData
+      oneOnOneInputData({ target: { value: '' } });
+    }
+  }, 1000);
+};
+/** 1v1-输入文字处理 */
+const oneOnOneInputData = (event) => {
+  if (ws && currentModeSelect.value === 'MODE_ONE_ON_ONE_WAIT') {
+    console.log('1v1-开始')
+    currentModeSelect.value = 'MODE_ONE_ON_ONE_ING';
+    startOneOnOneIngTimer();
+    startOneOnOneCollectTimer();
+    startOneOnOneAppendTimer();
+  }
+  currentModeSelect.value = 'MODE_ONE_ON_ONE_ING';
+  inputContent.value = event.target.value;
+}
+/** 1v1-发送当前用户输入数据 */
+const startOneOnOneIngTimer = () => {
+  individualTestIngTimer = setTimeout(() => {
+    if (currentModeSelect.value !== 'MODE_ONE_ON_ONE_ING') {
+      clearOneOnOneTimer();
+      return;
+    }
+    sendMessage(getMsg('PKONEONONE', 'ING', inputContent.value, matchInfo.value.roomId.toString()));
+    clearTimeout(individualTestIngTimer)
+    startOneOnOneIngTimer();
+  }, 3000);
+};
+const startOneOnOneCollectTimer = () => {
+  individualTestCollectTimer = setTimeout(() => {
+    if (currentModeSelect.value !== 'MODE_ONE_ON_ONE_ING') {
+      clearOneOnOneTimer();
+      return;
+    }
+    sendMessage(getMsg('PKONEONONE', 'COLLECT', '', matchInfo.value.roomId.toString()));
+    clearTimeout(individualTestCollectTimer)
+    startOneOnOneCollectTimer();
+  }, 20000);
+};
+const startOneOnOneAppendTimer = () => {
+  const textarea = document.getElementById('oneOnOne_source_text');
+  individualTestAppendTimer = setTimeout(() => {
+    if (currentModeSelect.value !== 'MODE_ONE_ON_ONE_ING') {
+      clearOneOnOneTimer();
+      return;
+    }
+    if (!isComposing.value) {
+      if (individualAppendIndex.value < bufferData.value.individualAppendData.length) {
+        // 当拼音在未确认的情况下，不更新sourceContent的值，否则会刷新元素，导致拼音未确认数据不显示
+        sourceContent.value += bufferData.value.individualAppendData[individualAppendIndex.value];
+        individualAppendIndex.value++;
+        scoreInfo.value.tipMsg = '';
+      }
+      scoreInfo.value.speed = bufferData.value.speed;
+      scoreInfo.value.accuracy = bufferData.value.accuracy;
+      scoreInfo.value.actualDuration = bufferData.value.actualDuration;
+      // 添加对textarea是否存在的检查
+      if (textarea) {
+        textarea.scrollTop = textarea.scrollHeight;
+      }
+    }
+    clearTimeout(individualTestAppendTimer)
+    startOneOnOneAppendTimer();
+  }, typingInterval);
+};
+
+const clearOneOnOneTimer = () => {
+  clearTimeout(individualTestIngTimer);
+  clearTimeout(individualTestCollectTimer);
+  clearTimeout(individualTestAppendTimer);
+}
+
+/** 1v1-提交数据 */
+const oneOnOneSubmit = () => {
+  if (currentModeSelect.value === 'MODE_ONE_ON_ONE_ING') {
+    currentModeSelect.value = 'MODE_ONE_ON_ONE_END';
+    clearOneOnOneTimer();
+    sendMessage(getMsg('PKONEONONE', 'END', inputContent.value, matchInfo.value.roomId.toString()));
   } else {
     utils.tip("输入文字开始", "warning");
   }
@@ -964,5 +1149,51 @@ a-card {
   background: linear-gradient(45deg, #52c41a, #73d13d);
   opacity: 0.8;
   cursor: not-allowed;
+}
+
+/* 倒计时样式 */
+.countdown-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 70vh;
+}
+
+.countdown-circle {
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1890ff, #096dd9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 30px rgba(24, 144, 255, 0.3);
+  animation: pulse 1s infinite alternate;
+}
+
+@keyframes pulse {
+  from {
+    transform: scale(1);
+    box-shadow: 0 10px 30px rgba(24, 144, 255, 0.3);
+  }
+
+  to {
+    transform: scale(1.05);
+    box-shadow: 0 15px 40px rgba(24, 144, 255, 0.4);
+  }
+}
+
+.countdown-number {
+  font-size: 5rem;
+  font-weight: bold;
+  color: white;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.countdown-text {
+  font-size: 1.2rem;
+  color: white;
+  margin-top: 0.5rem;
 }
 </style>
