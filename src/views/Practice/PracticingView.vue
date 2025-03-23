@@ -5,9 +5,9 @@
   <a-card>
     文章进度
     <a-progress :stroke-color="{
-    '0%': '#108ee9',
-    '100%': '#87d068',
-  }" :percent=defaultPercent />
+      '0%': '#108ee9',
+      '100%': '#87d068',
+    }" :percent=defaultPercent />
     <div class="title">
       <p>{{ articleInfo.title }}</p>&nbsp;
       <span>字数：{{ articleInfo.wordNums }}</span>
@@ -74,7 +74,7 @@ import ModeOne from '../../components/Practice/ModeOne.vue';
 import api from '../../api';
 import { useStore } from 'vuex';
 import PracticeTimer from '../../components/Practice/PracticeTimer.vue';
-import utils from '../../api/utils/componentUtil';
+import utils from '../../api/utils/generalUtil';
 
 
 const defaultPercent = ref(0);

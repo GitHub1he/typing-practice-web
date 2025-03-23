@@ -1,13 +1,13 @@
 <template>
   <ArticleList :listData="listData" @pageData="pageData" />
 </template>
-  
+
 <script setup>
 import ArticleList from '@/components/Article/ArticleList.vue';
 import api from '../../api';
 import { useStore } from 'vuex';
-import { ref } from 'vue';
-import utils from '../../api/utils/componentUtil';
+import { ref, inject } from 'vue';
+import utils from '../../api/utils/generalUtil';
 
 const store = useStore();
 const page = ref({});
@@ -17,9 +17,10 @@ const pageData = (value) => {
   search();
 };
 
+const userId = ref(inject('userId'));
 const search = () => {
   api.articleApi.userIdList({
-    userId: store.state.user.user.userId,
+    userId: userId.value ? userId.value : store.state.user.user.userId,
     page: {
       pageSize: page.value.pageSize,
       pageNo: page.value.page
@@ -33,7 +34,8 @@ const search = () => {
     }
   });
 };
+
 </script>
 
-<style scoped>
-</style>
+<style scoped></style>
+../../api/utils/generalUtil

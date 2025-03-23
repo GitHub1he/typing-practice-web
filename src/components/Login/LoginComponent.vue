@@ -21,16 +21,20 @@
         </a-button>
       </a-form-item>
 
-      <a-form-item :wrapper-col="{ ...layout.wrapperCol, offset: 8 }" style="margin-top: 2rem;">
+      <a-form-item :wrapper-col="{ ...layout.wrapperCol, offset: 8 }" style="margin-top: 1rem;">
         <a-button type="primary" ghost html-type="submit" @click="login" class="login-form-button">登录</a-button>
       </a-form-item>
       <a class="login-form-code" href="#" v-if="status" @click="loginByYzm">验证码登录</a>
       <a class="login-form-code" href="#" v-if="!status" @click="loginByYzm">密码登录</a>
-      <a class="login-form-forgot" href="#" @click="registerButton">没有账号去注册?</a>
+      <a class="login-form-forgot" href="#" @click="registerButton">去注册</a>
     </a-form>
+
+    <a-divider>其他方式登录</a-divider>
+    <a href="#" @click="redirectToGithub()">github登录</a>
+
   </a-card>
 </template>
-  
+
 <script>
 import { ref } from 'vue';
 import { reactive } from 'vue';
@@ -38,7 +42,8 @@ import { useStore } from 'vuex';
 import router from "@/router/index";
 import { message } from 'ant-design-vue';
 import api from '../../api/index.js';
-import utils from '../../api/utils/componentUtil';
+import utils from '../../api/utils/generalUtil';
+import baseUrl from '@/api/base';
 
 export default {
   name: 'LoginComponent',
@@ -82,6 +87,7 @@ export default {
       if (formState.user.email === '') {
         return;
       }
+      console.log(status.value);
       if (status.value === 1) {
         // 字符校验
         if (formState.user.password === '' || formState.user.password.length > 16 || formState.user.password.length < 8) {
@@ -104,6 +110,7 @@ export default {
           utils.tip('请输入验证码', "error");
           return;
         }
+        console.log(status.value);
         store.dispatch("loginByYzm", {
           email: formState.user.email,
           verifyCode: formState.user.code,
@@ -123,6 +130,18 @@ export default {
           }
         });
       }
+    };
+
+    const redirectToGithub = () => {
+      const clientId = 'Ov23liS8iNaAPu1qINvh';
+      const redirectUri = encodeURIComponent(`${baseUrl.webUrl}/loginByGithub`);
+      const state = Math.random().toString(36).substring(2); // 随机字符串
+      const scope = 'user';
+
+      const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&state=${state}`;
+
+      localStorage.setItem('github_oauth_state', state); // 保存 state
+      window.location.href = githubAuthUrl; // 重定向到 GitHub
     };
 
     const handleGetCode = () => {
@@ -171,6 +190,7 @@ export default {
     return {
       login,
       loginByYzm,
+      redirectToGithub,
       getYzm,
       forgetButton,
       registerButton,

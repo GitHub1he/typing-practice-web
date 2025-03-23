@@ -6,8 +6,9 @@
           选择文章：
         </a-col>
         <a-col :span="12">
-          <a-button type="link" @click="route">{{ articleInfo.articleName }}</a-button>
-          <span>{{ getItemNameByCode("articleLanguage", articleInfo.articleLanguage) }}</span>
+          <a-button v-if="articleInfo.articleName" type="link" @click="route">{{ articleInfo.articleName }}</a-button>
+          <a-button v-else type="link" @click="route">点击选择文章</a-button>
+          <span>{{ getDict.getLanguageName(articleInfo.articleLanguage) }}</span>
           <a-button type="dashed" @click="random">随机选</a-button>
         </a-col>
       </a-row>
@@ -49,14 +50,15 @@
     </div>
   </a-card>
 </template>
-  
+
 <script setup>
 import { ref, reactive, defineEmits } from 'vue';
 import router from '@/router/';
 import { useRoute } from 'vue-router';
 import api from '@/api/index.js';
-import utils from '../../api/utils/componentUtil';
-import getItemNameByCode from '../../api/utils/getItemNameByCode';
+import utils from '../../api/utils/generalUtil';
+import getDict from '../../api/utils/dict';
+
 
 const inputValue = ref(1);
 const value = ref('模式一');
@@ -72,13 +74,14 @@ const articleInfo = reactive({
   articleName: routes.query.articleName || "点击选择文章",
   articleLanguage: routes.query.articleLanguage || null,
 });
-
+console.log(articleInfo);
 const random = () => {
   api.practiceApi.random().then(res => {
-    if (res.data.data) {
-      articleInfo.articleId = JSON.parse(res.data.data).id;
-      articleInfo.articleName = JSON.parse(res.data.data).title;
-      articleInfo.articleLanguage = JSON.parse(res.data.data).language;
+    console.log(res);
+    if (res.data.success) {
+      articleInfo.articleId = res.data.data.id;
+      articleInfo.articleName = res.data.data.title;
+      articleInfo.articleLanguage = res.data.data.language;
     }
   });
 };
@@ -140,15 +143,15 @@ const init = () => {
   }
 };
 </script>
-  
+
 <style scoped>
-:where(.css-dev-only-do-not-override-hkh161).ant-col-4 {
+:where(.css-dev-only-do-not-override-1hsjdkk).ant-col-4 {
   text-align: right;
   margin-right: 10px;
   line-height: 2rem;
 }
 
-:where(.css-dev-only-do-not-override-hkh161).ant-row {
+:where(.css-dev-only-do-not-override-1hsjdkk).ant-row {
   margin-bottom: 1rem;
 }
 
@@ -162,17 +165,19 @@ const init = () => {
   margin-left: 9px;
 }
 
-:where(.css-dev-only-do-not-override-hkh161).ant-col-11 {
+:where(.css-dev-only-do-not-override-1hsjdkk).ant-col-11 {
   line-height: 2rem;
   color: #999;
   font-size: 12px;
 }
 
-:where(.css-dev-only-do-not-override-hkh161).ant-btn-link {
+:where(.css-dev-only-do-not-override-1hsjdkk).ant-btn-link {
   padding-left: 0;
 }
 
-:where(.css-dev-only-do-not-override-hkh161).ant-btn-dashed {
+:where(.css-dev-only-do-not-override-1hsjdkk).ant-btn-dashed {
   margin-left: 10px;
 }
 </style>
+../../api/utils/dict
+../../api/utils/generalUtil

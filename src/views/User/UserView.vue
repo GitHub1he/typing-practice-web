@@ -6,9 +6,18 @@
     </div>
   </div>
 </template>
-  
+
 <script setup>
 import UserMenu from '../../components/User/UserMenu.vue';
+import { useRoute } from 'vue-router';
+import { ref, provide, onBeforeUnmount } from 'vue';
+
+const routes = useRoute();
+const userId = ref(routes.query.userId);
+provide('userId', userId,);
+onBeforeUnmount(() => {
+  userId.value = ''; // 在组件销毁前将 userId 的值设置为空
+});
 </script>
 
 <style scoped>

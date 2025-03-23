@@ -12,6 +12,12 @@ const baseApi = {
   getDictionary(name) {
     return axios.get(`/dict/getDictionary?name=${name}`);
   },
+  getMsgProto() {
+    return axios.get(`/base/get/msgProto`);
+  },
+  getWsAddr() {
+    return axios.get(`/base/get/addr`);
+  },
 };
 
 export default baseApi;

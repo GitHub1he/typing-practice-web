@@ -9,7 +9,7 @@
     <AfterPracticeView />
   </div>
 </template>
-  
+
 <script setup>
 import BeforePracticeView from './BeforePracticeView.vue';
 import PracticingView from './PracticingView.vue';
@@ -48,10 +48,10 @@ provide('practiceInfo', practiceInfo);
 provide('articleInfo', articleInfo);
 provide('scoreInfo', scoreInfo);
 </script>
-  
+
 <style scoped>
 .beforePractice {
-  width: 40%;
+  width: 60%;
   margin: 5rem auto;
 }
 

@@ -9,7 +9,7 @@
   </a-list>
   <a-comment>
     <template #avatar>
-      <a-avatar src="https://joeschmoe.io/api/v1/random" alt="Han Solo" />
+      <!-- <a-avatar src="@/assets/images/avatar/1.jpg" alt="Han Solo" /> -->
     </template>
     <template #content>
       <a-form-item>
@@ -36,18 +36,18 @@ const handleSubmit = () => {
     return;
   }
   submitting.value = true;
-  setTimeout(() => {
-    submitting.value = false;
-    comments.value = [
-      {
-        author: 'Han Solo',
-        avatar: 'https://joeschmoe.io/api/v1/random',
-        content: value.value,
-        datetime: dayjs().fromNow(),
-      },
-      ...comments.value,
-    ];
-    value.value = '';
-  }, 1000);
+  // setTimeout(() => {
+  //   submitting.value = false;
+  //   comments.value = [
+  //     {
+  //       author: 'Han Solo',
+  //       avatar: 'https://joeschmoe.io/api/v1/random',
+  //       content: value.value,
+  //       datetime: dayjs().fromNow(),
+  //     },
+  //     ...comments.value,
+  //   ];
+  //   value.value = '';
+  // }, 1000);
 };
 </script>

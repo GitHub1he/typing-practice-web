@@ -1,5 +1,5 @@
 /**
- * 用户模块接口列表
+ * 练习模块接口列表
  */
 
 import axios from './utils/httpUtil'; // 导入http中创建的axios实例

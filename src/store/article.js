@@ -2,31 +2,34 @@ import api from '../api/index.js';
 
 const ModuleArticle = {
   state: {
-    articleLanguage: null,
-    articleTag: null,
+    articleLanguage: JSON.parse(localStorage.getItem('articleLanguage')) || [],
+    articleTag: JSON.parse(localStorage.getItem('articleTag')) || [],
   },
   getters: {
   },
   mutations: {
-    setArticleLanguage(state, language) {
+    setarticleLanguage(state, language) {
       state.articleLanguage = language;
     },
-    setArticleTag(state, tag) {
+    setarticleTag(state, tag) {
       state.articleTag = tag;
     },
   },
   actions: {
     fetchDictionary(context, data) {
-      api.baseApi.getDictionary(data)
-        .then(res => {
-          if (res.data.success) {
-            if (data === "articleTag") {
-              context.commit('setArticleTag', res.data.list);
-            } else if (data === "articleLanguage") {
-              context.commit('setArticleLanguage', res.data.list);
+      data.forEach(element => {
+        api.baseApi.getDictionary(element)
+          .then(res => {
+            if (res.data.success) {
+              context.commit(`set${element}`, res.data.list);
+              localStorage.setItem(element, JSON.stringify(res.data.list));
             }
-          }
-        });
+          }).catch(e => {
+            context.commit(`set${element}`, []);
+            console.log(e);
+          });
+      });
+
     },
   },
   modules: {

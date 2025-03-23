@@ -1,4 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import store from '@/store/index';
+import utils from '@/api/utils/generalUtil';
 
 const routes = [
   {
@@ -27,9 +29,9 @@ const routes = [
     component: () => import('../views/TestView.vue')
   },
   {
-    path: '/list',
-    name: 'list',
-    component: () => import('../views/ListView.vue')
+    path: '/ranking',
+    name: 'ranking',
+    component: () => import('../views/RankingView.vue')
   },
   {
     path: '/other',
@@ -40,6 +42,11 @@ const routes = [
     path: '/login',
     name: 'login',
     component: () => import('../views/LoginView.vue')
+  },
+  {
+    path: '/loginByGithub',
+    name: 'loginByGithub',
+    component: () => import('../views/User/RedirectToGithub.vue')
   },
   {
     path: '/user',
@@ -72,10 +79,14 @@ const router = createRouter({
 });
 
 // 在路由导航前触发获取字典数据的操作
-// router.beforeEach((to, from, next) => {
-//   store.dispatch("fetchDictionary", "articleTag").then(() => {
-//     next();
-//   });
-// });
+router.beforeEach((to, from, next) => {
+  if (['/login', '/loginByGithub'].includes(to.path)) return next();
+  if (store.state.user.isLogin) {
+    return next();
+  } else {
+    utils.tip("请先登录~", "error");
+    return next('/login');
+  }
+});
 
 export default router;

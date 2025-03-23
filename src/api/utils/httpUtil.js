@@ -6,27 +6,20 @@ import axios from 'axios';
 import router from '../../router';
 import store from '../../store/index';
 import baseUrl from '../base';
-import utils from './componentUtil';
-
-
-// 环境的切换
-if (process.env.NODE_ENV == 'development') {
-  axios.defaults.baseURL = baseUrl.devUrl;
-} else if (process.env.NODE_ENV == 'debug') {
-  axios.defaults.baseURL = baseUrl.devUrl;
-} else if (process.env.NODE_ENV == 'production') {
-  axios.defaults.baseURL = baseUrl.prodUrl;
-}
+import utils from './generalUtil';
 
 // 创建axios实例
-var instance = axios.create({
+const instance = axios.create({
   timeout: 1000 * 12,
   headers: {
     'Accept': '*/*',
     'Content-Type': 'application/json;charset=UTF-8'
   }
 });
+// 环境的切换
+instance.defaults.baseURL = baseUrl.httpUrl;
 
+const proxyAxios = axios.create();
 /** 
  * 请求拦截器 
  * 每次请求前，如果存在token则在请求头中携带token 
@@ -50,7 +43,7 @@ instance.interceptors.response.use(
         case '-10002':
           // token过期,重新获取后请求
           return refreshTokenAndResendRequest(res);
-        case "-10003":
+        case "-100021":
           toLogin();
           break;
         default:
@@ -176,3 +169,4 @@ const toLogin = () => {
 };
 
 export default instance;
+export  {proxyAxios} ;

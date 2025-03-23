@@ -31,54 +31,22 @@
       </span>
     </div>
   </a-card>
-  <!-- </a-card> -->
-  <a-card>
-    <a-card hoverable @click="handleStarClick" :style="{
-      border: cardStared ? '1px solid #86DDFF' : '',
-      color: cardStared ? '#298AE6' : '',
-    }">
-      <div class="userLike">
-        我的收藏
-      </div>
-    </a-card>
-    <a-card hoverable @click="handleLikeClick" :style="{
-      border: cardLiked ? '1px solid #86DDFF' : '',
-      color: cardLiked ? '#298AE6' : '',
-    }">
-      <div class="userLike">
-        我的点赞
-      </div>
-    </a-card>
-    <a-card hoverable @click="handleCreateClick" :style="{
-      border: cardCreated ? '1px solid #86DDFF' : '',
-      color: cardCreated ? '#298AE6' : '',
-    }">
-      <div class="userLike">
-        我的创建
-      </div>
-    </a-card>
-  </a-card>
+
 </template>
 
 
 <script setup>
 import { ref, defineEmits, watch } from 'vue';
-import utils from '../../api/utils/componentUtil';
+import utils from '../../api/utils/generalUtil';
 import { CloseOutlined } from '@ant-design/icons-vue';
 import { useStore } from 'vuex';
 
 const store = useStore();
 const value = ref('');
-// const types = ref(['小说', '散文', '童话', '诗歌', '叙事', '新闻', '哲学', '其他']);
 const types = store.state.article.articleTag;
-// const languages = ref(['中文', '英语', '韩语', '日语']);
 const languages = store.state.article.articleLanguage;
 const selectedType = ref([]);
 const selectedLanguage = ref([]);
-const cardLiked = ref(false);
-const cardStared = ref(false);
-const cardCreated = ref(false);
-const starOrPackFlag = ref(0);
 
 const searchData = ref({
   title: '',
@@ -86,28 +54,13 @@ const searchData = ref({
   tagMask: [],
 });
 
-watch(() => searchData.value, () => {
-  cardLiked.value = false;
-  cardStared.value = false;
-  cardCreated.value = false;
-}, { deep: true });
-
 const emit = defineEmits(['searchData']);
 const ziChuanFu = () => {
-  emit('searchData', searchData.value, starOrPackFlag.value);
+  emit('searchData', searchData.value);
 };
-const reset = () => {
-  if (
-    cardLiked.value === false &&
-    cardStared.value === false &&
-    cardCreated.value === false
-  ) {
-    starOrPackFlag.value = 0;
-  }
-};
+
 const onSearch = value => {
   searchData.value.title = value;
-  reset();
   ziChuanFu();
 };
 watch(value, (val) => {
@@ -123,7 +76,6 @@ const selectType = index => {
     } else {
       selectedType.value.push(types[index]);
       searchData.value.tagMask.push(types[index].itemCode);
-      reset();
       ziChuanFu();
     }
   } else {
@@ -136,56 +88,21 @@ const selectLanguage = index => {
   } else {
     selectedLanguage.value.splice(0, 1, languages[index]);
     searchData.value.language = languages[index].itemCode;
-    reset();
     ziChuanFu();
   }
 };
 const deleteType = (index) => {
   selectedType.value.splice(index, 1);
   searchData.value.tagMask.splice(index, 1);
-  reset();
   ziChuanFu();
 };
 const deleteLanguage = index => {
   selectedLanguage.value.splice(index, 1);
   searchData.value.language = null;
-  reset();
   ziChuanFu();
 };
 
-const handleStarClick = () => {
-  cardStared.value = !cardStared.value;
-  if (cardStared.value) {
-    cardLiked.value = false;
-    cardCreated.value = false;
-    starOrPackFlag.value = 2;
-  } else {
-    starOrPackFlag.value = 0;
-  }
-  ziChuanFu();
-};
-const handleLikeClick = () => {
-  cardLiked.value = !cardLiked.value;
-  if (cardLiked.value) {
-    cardStared.value = false;
-    cardCreated.value = false;
-    starOrPackFlag.value = 1;
-  } else {
-    starOrPackFlag.value = 0;
-  }
-  ziChuanFu();
-};
-const handleCreateClick = () => {
-  cardCreated.value = !cardCreated.value;
-  if (cardCreated.value) {
-    cardStared.value = false;
-    cardLiked.value = false;
-    starOrPackFlag.value = 3;
-  } else {
-    starOrPackFlag.value = 0;
-  }
-  ziChuanFu();
-};
+
 </script>
 
 <style scoped>

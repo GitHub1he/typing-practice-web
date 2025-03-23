@@ -1,12 +1,10 @@
 <template>
   <div class="userNavBar">
     <div class="avatar">
-      <a-avatar v-if="isValidAvatar" :src="avatarSrc">
-      </a-avatar>
-      <a-avatar v-else>
+      <a-avatar :src="utils.getAvatarSrc(avatarNumber)">
       </a-avatar>
       <div>
-        {{ store.state.user.user.nickName }}
+        {{ user.nickName }}
       </div>
     </div>
     <div>
@@ -31,9 +29,9 @@
             </span>
           </template>
           <a-menu-item key="2">
-            <router-link :to="{ name: 'arlist' }">我创建的文章</router-link>
+            <router-link :to="{ name: 'arlist' }">创建的文章</router-link>
           </a-menu-item>
-          <a-menu-item key="3">收到的通知</a-menu-item>
+          <a-menu-item key="3" v-if="user.userId === store.state.user.user.userId">收到的通知</a-menu-item>
         </a-sub-menu>
         <a-sub-menu key="sub3">
           <template #title>
@@ -49,24 +47,27 @@
       </a-menu>
     </div>
     <div class="logout">
-      <a-button type="primary" danger @click="showConfirm">退出登录</a-button>
+      <a-button type="primary" danger @click="showConfirm"
+        v-if="user.userId === store.state.user.user.userId">退出登录</a-button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { reactive, createVNode } from 'vue';
+import { reactive, createVNode, inject, onMounted, ref } from 'vue';
 import { MailOutlined, AppstoreOutlined, SettingOutlined, ExclamationCircleOutlined } from '@ant-design/icons-vue';
 import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
 import { Modal } from 'ant-design-vue';
+import api from '../../api';
+import utils from '../../api/utils/generalUtil';
 
 const store = useStore();
 const router = useRouter();
 
-const avatarNumber = store.state.user.user.avatar;
-const isValidAvatar = ['1', '2', '3', '4'].includes(avatarNumber);
-const avatarSrc = isValidAvatar ? require(`@/assets/images/avatar/${avatarNumber}.jpg`) : null;
+const userId = ref(inject('userId'));
+const user = ref({ ...store.state.user.user });
+const avatarNumber = ref(store.state.user.user.avatar);
 
 const logout = () => {
   store.dispatch("logout");
@@ -103,6 +104,18 @@ const onOpenChange = openKeys => {
     state.openKeys = latestOpenKey ? [latestOpenKey] : [];
   }
 };
+
+onMounted(() => {
+  if (userId.value) {
+    api.userApi.getInfo(userId.value).then(res => {
+      if (res.data.success) {
+        user.value = res.data.data;
+        avatarNumber.value = user.value.avatar;
+      }
+    });
+  }
+
+});
 </script>
 
 <style scoped>

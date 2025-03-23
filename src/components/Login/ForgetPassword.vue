@@ -30,7 +30,7 @@
     </a-form>
   </a-card>
 </template>
-  
+
 <script>
 import { ref } from 'vue';
 import { reactive } from 'vue';
@@ -38,7 +38,7 @@ import { reactive } from 'vue';
 // import router from "@/router/index";
 import { message } from 'ant-design-vue';
 import api from '../../api/index.js';
-import utils from '../../api/utils/componentUtil';
+import utils from '../../api/utils/generalUtil';
 
 export default {
   name: 'ForgetPasswordComponent',
@@ -189,3 +189,4 @@ a {
   width: 11.5rem;
 }
 </style>
+../../api/utils/generalUtil.js

@@ -1,0 +1,11 @@
+syntax = "proto3";// 指定protobuf版本
+option java_package = "com.he.backend.ws.protobuf";// 指定包名
+option java_outer_classname = "ResponseProtobuf";// 指定生成的类名
+
+message RespMsg {
+    bool success = 1;
+    string code = 2;
+    string msg = 3;
+    int32 total = 4;
+    string data = 5;
+}

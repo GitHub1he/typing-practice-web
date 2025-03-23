@@ -40,6 +40,7 @@
       <a-row :gutter="16">
         <a-col :span="24">
           <a-form-item label="描述" name="summary">
+            <a-checkbox v-model:checked="form.autoGeneration">自动生成</a-checkbox>
             <a-textarea v-model:value="form.summary" :rows="2" placeholder="请输入你的文章描述" />
           </a-form-item>
         </a-col>
@@ -56,10 +57,10 @@
   </a-drawer>
 </template>
 <script setup>
-import { ref, computed, createVNode, defineExpose, defineProps, watch } from 'vue';
+import { ref, computed, createVNode, defineExpose, defineEmits, defineProps, watch } from 'vue';
 import api from '../../api';
-import utils from '@/api/utils/componentUtil';
-import router from '../../router';
+import utils from '@/api/utils/generalUtil';
+// import router from '../../router';
 import { useStore } from 'vuex';
 import { Modal } from 'ant-design-vue';
 
@@ -79,6 +80,7 @@ watch(() => props.updataId, (newListData) => {
       form.value.language = res.data.data.language;
       form.value.tagMask = res.data.data.tags;
       form.value.content = res.data.data.content;
+      form.value.autoGeneration = res.data.data.autoGeneration || false;
       console.log(detail.value);
     });
   } else {
@@ -163,6 +165,7 @@ const onClose = () => {
   }
   open.value = false;
 };
+const emit = defineEmits(['refreshArticleList']);
 const submit = () => {
   if (form.value.title === '' ||
     form.value.language === '' ||
@@ -177,8 +180,8 @@ const submit = () => {
         console.log(res);
         utils.tip('修改成功', "success");
         setTimeout(() => {
-          router.go(0);
-        }, 900); // 延迟1秒后刷新页面
+          emit('refreshArticleList');
+        }, 500); // 延迟1秒后刷新页面
       }
     });
   }
@@ -193,6 +196,7 @@ const form = ref({
   tagMask: [],
   summary: '',
   content: '',
+  autoGeneration: false,
 });
 
 const rules = {

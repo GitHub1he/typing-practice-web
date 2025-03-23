@@ -27,6 +27,9 @@ const articleApi = {
   search(params) {
     return axios.post(`/article/search`, params);
   },
+  searchNotAudited(params) {
+    return axios.post(`/article/notAudited`, params);
+  },
   //收藏文章
   star(articleId) {
     return axios.post(`/article/pack?articleId=${articleId}`);
@@ -39,6 +42,13 @@ const articleApi = {
   //获取文章详情
   desc(articleId) {
     return axios.get(`/article/desc`, {
+      params: {
+        articleId: articleId
+      }
+    });
+  },
+  getNextArticle(articleId) {
+    return axios.get(`/article/getNextArticleId`, {
       params: {
         articleId: articleId
       }

@@ -7,7 +7,7 @@
         <template #actions>
           <!-- 文字图标 -->
           <a-avatar size="small" :style="{ backgroundColor: '#7265e6', verticalAlign: 'middle' }">
-            {{ getItemNameByCode("articleLanguage", item.language) }}
+            {{ getDict.getLanguageName(item.language) }}
           </a-avatar>
           <!-- 字数 -->
           <span style="user-select:none;">
@@ -28,13 +28,25 @@
               :style="{ marginRight: '8px', color: isLike(item.id) ? '#F21212' : 'inherit' }" />
             {{ articleStatus[item.id].likes }}
           </span>
+          <!-- 过审状态图标 -->
+          <span style="user-select:none;">
+            <a-tooltip title="审核通过">
+              <component v-if="item.auditedStatus === 1" :is="component.audited" style="color: green" />
+            </a-tooltip>
+            <a-tooltip title="未审核">
+              <component v-if="item.auditedStatus === 0" :is="component.initAudited" style="color: orange" />
+            </a-tooltip>
+            <a-tooltip title="审核未通过">
+              <component v-if="item.auditedStatus === 2" :is="component.noAudited" style="color: red" />
+            </a-tooltip>
+          </span>
         </template>
 
         <!-- 描述 -->
         <a-list-item-meta>
           <template #description>
             <span v-for="text in item.tags" :key="text">
-              {{ getItemNameByCode("articleTag", text) }}
+              {{ getDict.getTagItemName(text) }}
               <!-- {{ text }} -->
             </span>
           </template>
@@ -61,17 +73,17 @@
       </a-list-item>
     </template>
   </a-list>
-  <UpdataArticle ref="childRef" :updataId="updataId" />
+  <UpdataArticle ref="childRef" :updataId="updataId" @refreshArticleList="refreshArticleList" />
 </template>
 <script setup>
 import { useDebounce } from '../../api/utils/debounce';
-import { StarOutlined, LikeOutlined, BarChartOutlined, ExclamationCircleOutlined } from '@ant-design/icons-vue';
+import { StarOutlined, LikeOutlined, BarChartOutlined, CheckCircleOutlined, ExclamationCircleOutlined, CloseCircleOutlined } from '@ant-design/icons-vue';
 import { ref, defineProps, defineEmits, watch, createVNode } from 'vue';
 import api from '../../api/index.js';
 import { useStore } from 'vuex';
 import router from '../../router';
-import utils from '../../api/utils/componentUtil';
-import getItemNameByCode from '../../api/utils/getItemNameByCode';
+import utils from '../../api/utils/generalUtil';
+import getDict from '../../api/utils/dict';
 import { Modal } from 'ant-design-vue';
 import UpdataArticle from './UpdataArticle.vue';
 
@@ -84,6 +96,9 @@ const component = {
   star: StarOutlined,
   like: LikeOutlined,
   bar: BarChartOutlined,
+  audited: CheckCircleOutlined,
+  initAudited: ExclamationCircleOutlined,
+  noAudited: CloseCircleOutlined,
 };
 
 const articleStatus = ref({});
@@ -116,7 +131,7 @@ const pagination = {
   page: 1,
   onChange: page => {
     pageData.value.page = page;
-    ziChuanFu();
+    refreshArticleList();
   },
 };
 const pageData = ref({
@@ -125,11 +140,11 @@ const pageData = ref({
   page: pagination.page,
 });
 const emit = defineEmits(['pageData']);
-const ziChuanFu = () => {
+const refreshArticleList = () => {
   emit('pageData', pageData.value);
 };
 if (store.state.user.isLogin) {
-  ziChuanFu();
+  refreshArticleList();
 }
 
 // 切换文章的收藏状态
@@ -171,11 +186,6 @@ const toggleLike = debounce(articleId => {
 const isStar = articleId => articleStatus.value[articleId].isStarred;
 const isLike = articleId => articleStatus.value[articleId].isLiked;
 
-const view = async (id) => {
-  let data = await api.articleApi.view(id);
-  console.log(data);
-};
-
 const routeInfo = (params) => {
   router.push({
     name: 'detail',
@@ -183,7 +193,6 @@ const routeInfo = (params) => {
       articleId: params,
     }
   });
-  view(params);
 };
 
 
@@ -217,8 +226,8 @@ const del = (id) => {
         utils.tip('删除成功', "success");
       }, 200);
       setTimeout(() => {
-        router.go(0);
-      }, 900); // 延迟1秒后刷新页面
+        refreshArticleList();
+      }, 500); // 延迟1秒后刷新页面
     }
   });
 };
@@ -230,6 +239,10 @@ const updateArticle = (id) => {
 </script>
 
 <style scoped>
+* {
+  font-family: 'SmileySans', sans-serif;
+}
+
 :where(.css-dev-only-do-not-override-hkh161).ant-list-vertical .ant-list-item .ant-list-item-meta {
   margin-block-end: 0;
   align-items: center;

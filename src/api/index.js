@@ -6,6 +6,7 @@ import userApi from '@/api/userApi';
 import baseApi from './baseApi';
 import articleApi from './articleApi';
 import practiceApi from './practiceApi';
+import rankApi from './rankApi';
 // 其他模块的接口……
 
 // 导出接口
@@ -14,5 +15,6 @@ export default {
   baseApi,
   articleApi,
   practiceApi,
+  rankApi,
   // ……
 };

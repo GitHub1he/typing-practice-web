@@ -1,7 +1,7 @@
 <template>
   <a-card title="成绩详情" :headStyle="{ textAlign: 'center' }">
     <a-row>
-      <a-col :span="12">
+      <a-col :span="12" @click="routeUserInfo(scoreInfo.userId)" style="cursor: pointer;">
         用户：{{ scoreInfo.nickName }}
       </a-col>
       <a-col :span="12">
@@ -9,7 +9,7 @@
       </a-col>
     </a-row>
     <a-row>
-      <a-col :span="12">
+      <a-col :span="12" @click="routeArticleDetailInfo(scoreInfo.articleId)" style="cursor: pointer;">
         文章：{{ scoreInfo.title }}
       </a-col>
       <a-col :span="12">
@@ -52,15 +52,34 @@
 </template>
 
 <script setup>
-import { ref, inject } from 'vue';
+import { ref, inject, computed } from 'vue';
 import ECharts from '@/components/ECharts.vue';
+import router from '@/router';
 const scoreInfo = ref(inject('scoreInfo'));
-console.log(scoreInfo.value);
-const chartData1 = {
-  xAxisData: JSON.parse(scoreInfo.value.axisXData),
-  seriesData: JSON.parse(scoreInfo.value.axisYData),
-};
+const chartData1 = computed(() => {
+  return {
+    xAxisData: scoreInfo.value.axisXData ? JSON.parse(scoreInfo.value.axisXData) : [],
+    seriesData: scoreInfo.value.axisYData ? JSON.parse(scoreInfo.value.axisYData) : [],
+  };
+});
 
+const routeUserInfo = (id) => {
+  console.log(id);
+  router.push({
+    name: "user",
+    query: {
+      userId: id,
+    }
+  });
+};
+const routeArticleDetailInfo = (params) => {
+  router.push({
+    name: 'detail',
+    params: {
+      articleId: params,
+    }
+  });
+};
 </script>
 
 <style scoped>

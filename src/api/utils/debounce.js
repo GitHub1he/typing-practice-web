@@ -1,5 +1,6 @@
+// 防抖
 import { ref } from 'vue';
-import utils from './componentUtil';
+import utils from './generalUtil';
 export function useDebounce() {
   const isDebounced = ref(false);
 

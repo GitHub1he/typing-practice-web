@@ -118,9 +118,9 @@ const ModuleUser = {
       });
     },
     loginByYzm(context, data) {
-      api.userApi.login({
+      api.userApi.loginByYzm({
         email: data.email,
-        password: data.password,
+        verifyCode: data.verifyCode,
       }).then(res => {
         if (res.data.success) {
           localStorage.setItem('access', res.data.data.access);
@@ -146,10 +146,37 @@ const ModuleUser = {
         // 执行某些操作
       });
     },
+    loginByGithub(context,  { code, success, error }) {
+      try{
+        api.userApi.loginByGithub(code).then(res => {
+        if (res.data.success) {
+          localStorage.setItem('access', res.data.data.access);
+          localStorage.setItem('refresh', res.data.data.refresh);
+          context.commit("setAccess", res.data.data.access);
+          context.commit("setRefresh", res.data.data.refresh);
+          context.commit("setIsLogin", true);
+          success();
+          context.dispatch("getinfo", {
+            // id: data.userId, // 传入用户ID或其他必要参数
+            success: () => {
+              // 在获取用户信息成功后执行的操作
+              console.log("获取用户信息成功");
+            },
+            error: (errorRes) => {
+              // 在获取用户信息失败后执行的操作
+              console.error("获取用户信息失败：", errorRes);
+            }
+          });
+        } else {
+          error(res);
+        }})
+      } catch(e) {
+        error(e);
+      }
+    },
     getinfo(context, data) {
       api.userApi.getInfo()
         .then(res => {
-          console.log("获取用户信息：", res);
           if (res.data.success) {
             context.commit("setUser", res.data);
             localStorage.setItem('user', JSON.stringify(res.data.data));
@@ -158,7 +185,7 @@ const ModuleUser = {
             data.error(res);
           }
         });
-
+      context.dispatch("fetchDictionary", ["articleTag", "articleLanguage"]);
     },
     logout(context) {
       localStorage.removeItem("access");

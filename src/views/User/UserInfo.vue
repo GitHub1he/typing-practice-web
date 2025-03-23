@@ -4,32 +4,32 @@
     <div>
       <p>头像：</p>
       <a-tooltip placement="bottom">
-        <template #title>
+        <template #title v-if="user.userId === store.state.user.user.userId">
           <span>点击更换头像</span>
         </template>
         <div style="position: relative; display: inline-block;" @click="showDrawer">
-          <a-avatar v-if="isValidAvatar" :src="avatarSrc" class="img">
+          <a-avatar :src="avatarSrc" class="img">
           </a-avatar>
-          <a-avatar v-else class="img"></a-avatar>
         </div>
       </a-tooltip>
-      <p>用户名:</p><a-input v-model:value="user.nickName" :style="{ width: '250px' }" />
-      <p>邮箱:</p><a-input v-model:value="user.email" disabled :style="{ width: '250px' }" />
+      <p>用户名:</p><a-input v-model:value="user.nickName" :style="{ width: '250px' }" :readonly="!isEditable" />
+      <p>邮箱:</p><a-input v-model:value="user.email" readonly :style="{ width: '250px' }" />
       <p>
         性别：
-        <a-radio-group v-model:value="gender" name="radioGroup">
+        <a-radio-group v-model:value="gender" name="radioGroup" :disabled="!isEditable">
           <a-radio value="1">男</a-radio>
           <a-radio value="2">女</a-radio>
         </a-radio-group>
       </p>
-      <p>手机号:</p><a-input v-model:value="user.phone" disabled :style="{ width: '250px' }" />
-      <p>地址:</p><a-input v-model:value="user.address" :style="{ width: '500px' }" />
+      <p>手机号:</p><a-input v-model:value="user.phone" readonly :style="{ width: '250px' }" />
+      <p>地址:</p><a-input v-model:value="user.address" :style="{ width: '500px' }" :readonly="!isEditable" />
       <p>简介:
-      </p><a-textarea v-model:value="user.bio" :autosize="{ minRows: 3, maxRows: 6, }" :style="{ width: '500px' }" />
-      <p>上次登录时间:</p><a-input v-model:value="user.lastLoginTime" disabled :style="{ width: '250px' }" />
+      </p><a-textarea v-model:value="user.bio" :autoSize="{ minRows: 3, maxRows: 6, }" :style="{ width: '500px' }"
+        :readonly="!isEditable" />
+      <p>上次登录时间:</p><a-input v-model:value="user.lastLoginTime" readonly :style="{ width: '250px' }" />
     </div>
     <div class="button">
-      <a-button type="primary" @click="updataInfo">更新个人信息</a-button>
+      <a-button type="primary" @click="updataInfo" v-if="user.userId === store.state.user.user.userId">更新个人信息</a-button>
     </div>
   </div>
   <a-drawer :height="250" title="选择头像" placement="bottom" :open="open" @close="onClose">
@@ -44,22 +44,23 @@
     </div>
   </a-drawer>
 </template>
-  
+
 <script setup>
 import { useStore } from 'vuex';
-import { computed, ref } from 'vue';
+import { computed, ref, inject, onMounted } from 'vue';
 import api from '../../api';
-import utils from '../../api/utils/componentUtil';
+import utils from '../../api/utils/generalUtil';
 import router from '../../router';
 
 const store = useStore();
+const userId = ref(inject('userId'));
 const user = ref({ ...store.state.user.user });
 const gender = ref(user.value.gender?.toString());
 
 const avatarNumber = ref(store.state.user.user.avatar);
-const isValidAvatar = computed(() => ['1', '2', '3', '4'].includes(avatarNumber.value));
-const avatarSrc = computed(() => isValidAvatar.value ? require(`@/assets/images/avatar/${avatarNumber.value}.jpg`) : null);
+const avatarSrc = computed(() => utils.getAvatarSrc(avatarNumber.value));
 const avatarn = ref(store.state.user.user.avatar);
+const isEditable = computed(() => user.value.userId === store.state.user.user.userId);
 
 const avatars = [
   { id: '1' },
@@ -76,21 +77,24 @@ const updataInfo = () => {
     bio: user.value.bio,
     avatar: avatarNumber.value,
   }).then(res => {
-    console.log(res);
-    store.dispatch("getinfo", {
-      success() {
-        utils.tip("修改成功", "success");
-        router.go(0);
-      },
-      error(e) {
-        console.error("登录报错：", e);
-      }
-    });
+    if (res.data.success) {
+      store.dispatch("getinfo", {
+        success() {
+          utils.tip("修改成功", "success");
+          router.go(0);
+        },
+        error(e) {
+          console.error("登录报错：", e);
+        }
+      });
+    }
   });
 };
 const open = ref(false);
 const showDrawer = () => {
-  open.value = true;
+  if (user.value.userId === store.state.user.user.userId) {
+    open.value = true;
+  }
 };
 const onClose = () => {
   open.value = false;
@@ -103,6 +107,17 @@ const selectAvatar = () => {
 const changeAvatar = (avatarNum) => {
   avatarn.value = avatarNum;
 };
+onMounted(() => {
+  if (userId.value) {
+    api.userApi.getInfo(userId.value).then(res => {
+      if (res.data.success) {
+        user.value = res.data.data;
+        avatarNumber.value = user.value.avatar;
+      }
+    });
+  }
+
+});
 </script>
 
 <style scoped>
@@ -140,3 +155,4 @@ const changeAvatar = (avatarNum) => {
   text-align: center;
 }
 </style>
+../../api/utils/generalUtil

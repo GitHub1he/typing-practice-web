@@ -3,12 +3,16 @@
     <a-menu mode="horizontal">
       <li v-if="!loginStatus">
         <a-menu-item key="home">
-          <router-link :to="{ name: 'home' }">首页</router-link>
+          <router-link :to="{ name: 'home' }">
+            <img src="@/assets/images/home.png" style="height: 3.5rem; display: block;">
+          </router-link>
         </a-menu-item>
       </li>
       <li v-else>
         <a-menu-item key="home">
-          <router-link :to="{ name: 'home' }">首页</router-link>
+          <router-link :to="{ name: 'home' }">
+            <img src="@/assets/images/home.png" style="height: 3.5rem; display: block;">
+          </router-link>
         </a-menu-item>
         <a-menu-item key="article">
           <router-link :to="{ name: 'article' }">文章管理</router-link>
@@ -19,8 +23,8 @@
         <a-menu-item key="test">
           <router-link :to="{ name: 'test' }">测试</router-link>
         </a-menu-item>
-        <a-menu-item key="list">
-          <router-link :to="{ name: 'list' }">排行榜</router-link>
+        <a-menu-item key="ranking">
+          <router-link :to="{ name: 'ranking' }">排行榜</router-link>
         </a-menu-item>
         <a-menu-item key="other">
           <router-link :to="{ name: 'other' }">其他</router-link>
@@ -35,9 +39,8 @@
         <router-link :to="{ name: 'user' }">
           <a-menu-item key="user">
             <a-badge dot>
-              <a-avatar v-if="isValidAvatar" :src="avatarSrc">
+              <a-avatar :src="avatarSrc">
               </a-avatar>
-              <a-avatar v-else></a-avatar>
             </a-badge>
           </a-menu-item>
         </router-link>
@@ -50,19 +53,18 @@
 import { ref } from 'vue';
 import { useStore } from 'vuex';
 import { computed } from 'vue';
+import utils from '@/api/utils/generalUtil';
 export default {
   setup() {
     const current = ref(['mail']);
     const store = useStore();
     const loginStatus = computed(() => store.state.user.isLogin);
-    const avatarNumber = store.state.user.user.avatar;
-    const isValidAvatar = ['1', '2', '3', '4'].includes(avatarNumber);
-    const avatarSrc = isValidAvatar ? require(`@/assets/images/avatar/${avatarNumber}.jpg`) : null;
+    const avatar = store.state.user.user.avatar;
+    const avatarSrc = utils.getAvatarSrc(avatar);
     return {
       current,
       loginStatus,
       store,
-      isValidAvatar,
       avatarSrc
     };
   },
@@ -72,11 +74,19 @@ export default {
 <style scoped>
 * {
   text-decoration: none;
+  font-family: 'SmileySans', sans-serif;
+  font-size: medium;
+  font-weight: 600;
 }
 
 .ant-menu-overflow>li:nth-child(2) {
   position: absolute;
   right: 0;
+}
+
+.ant-menu {
+  height: 100%;
+  line-height: 3.5rem;
 }
 
 .menu-container {
@@ -91,5 +101,8 @@ export default {
   height: 100%;
   line-height: 56px;
 }
-</style>
 
+:where(.css-dev-only-do-not-override-1hsjdkk).ant-menu-light .ant-menu-item a:hover {
+  color: brown;
+}
+</style>

@@ -7,22 +7,6 @@ import store from '../store/index';
 
 
 const userApi = {
-  // 新闻列表    
-  // articleList () {        
-  // 	return axios.get(`${base.sq}/topics`);    
-  // },    
-  // 新闻详情,演示    
-  // articleDetail (id, params) {        
-  // 	return axios.get(`${base.sq}/topic/${id}`, {            
-  // 		params: params        
-  // 	});    
-  // },
-  // post提交    
-  // login (params) {        
-  // 	return axios.post(`${base.sq}/api/user/login`, qs.stringify(params));    
-  // }
-  // 其他接口…………
-
   // 账密登录
   login(params) {
     return axios.post(`/user/login`, params);
@@ -38,6 +22,10 @@ const userApi = {
   // 验证码登录
   loginByYzm(params) {
     return axios.post(`/user/loginByYzm`, params);
+  },
+  // github登录
+  loginByGithub(code) {
+    return axios.get(`/user/loginByGithub?code=${code}`);
   },
   // 注册
   register(params) {

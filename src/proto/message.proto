@@ -1,0 +1,33 @@
+syntax = "proto3";// 指定protobuf版本
+option java_package = "com.he.backend.ws.protobuf";// 指定包名
+option java_outer_classname = "MessageProtobuf";// 指定生成的类名
+
+message Msg {
+    Head head = 1;
+    Body body = 2;
+    Sender sender = 3;
+}
+
+// 消息头
+message Head {
+    int32 msgType = 1;// 消息类型
+    int32 msgContentType = 2;// 消息内容类型
+    int64 timestamp = 3;// 消息时间戳
+    int32 statusReport = 4;// 状态报告
+    string access = 5;
+}
+
+// 消息体
+message Body {
+    string receiveId = 1;
+    string msgContent = 2;
+    string extend = 3;
+}
+
+// 消息发送者信息
+message Sender {
+    uint32 userId = 1;
+    string name = 2;
+    string avatar = 3;
+    string extend = 4;
+}
