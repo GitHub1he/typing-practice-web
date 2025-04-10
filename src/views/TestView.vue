@@ -1,30 +1,12 @@
+// todo
+// 1. 连接前调用获取地址
 <template>
   <!-- 右上角状态显示 -->
   <StatusBar :ws-status="wsStatus" @logout="wsLogout" @connect="connectWebSocket" />
 
   <!-- 模式选择 -->
-  <div class="mode-select" v-if="currentModeSelect === 'MODE_CHANGE_MODE'">
-
-    <a-card class="mode-select-item" :hoverable="true" title="个人练习">
-      <div v-for="(item, index) in languages" :key="item.itemCode || index">
-        <a-card class="language-card" :title="item.itemName" @click="StartIndividualTest(item.itemCode)"
-          style="margin-bottom: 5px;" hoverable></a-card>
-      </div>
-      <a-card class="language-card" title="随机" @click="StartIndividualTest('')" hoverable></a-card>
-    </a-card>
-
-    <a-card class="mode-select-item" :hoverable="true" title="竞赛">
-      <div v-for="(item, index) in matchSelect" :key="item.itemCode || index">
-        <a-card class="language-card" :title="item.itemName" @click="StartMatch(item.itemCode)"
-          style="margin-bottom: 5px;" hoverable></a-card>
-      </div>
-    </a-card>
-
-    <a-card class="mode-select-item" title="其他模式">
-      <p>暂未开放</p>
-    </a-card>
-  </div>
-
+  <ModeSelection v-if="currentModeSelect === 'MODE_CHANGE_MODE'" @start-individual="StartIndividualTest"
+    @start-match="StartMatch" />
 
   <div class="test-individual" @paste.capture.prevent=false @copy.capture.prevent=false @keydown="handleKeydown"
     tabindex="0"
@@ -100,6 +82,7 @@
     <AfterPracticeView />
   </div>
 
+  <!-- 匹配中 -->
   <div class="test-individual" v-if="currentModeSelect === 'MODE_MATCH_ING'">
     <div class="matching-container">
       <div class="matching-circle">
@@ -115,6 +98,7 @@
     </div>
   </div>
 
+  <!-- 匹配成功 -->
   <div class="test-individual" v-if="currentModeSelect === 'MODE_MATCH_SUCCESS'">
     <div class="match-success-container">
       <div class="match-overlay">
@@ -161,6 +145,7 @@
 
 <script setup>
 import StatusBar from '@/components/Test/StatusBar.vue';
+import ModeSelection from '@/components/Test/ModeSelection.vue';
 import { onMounted, onBeforeUnmount, computed, ref, provide } from 'vue';
 import { useStore } from 'vuex';
 import baseUrl from '@/api/base';
@@ -193,13 +178,6 @@ const matchInfo = ref(null); // 存储匹配信息
 const isReady = ref(false); // 准备状态
 const currentMatchMode = ref(''); // 存储当前比赛模式
 
-const languages = store.state.article.articleLanguage;
-const matchSelect = [
-  {
-    "itemCode": '0',
-    "itemName": "激情1V1"
-  }
-];
 const fontSize = ref(16);
 const isSideBySide = ref(false);//视图，文本框上下/左右分布
 const sourceContent = ref('');
@@ -850,32 +828,6 @@ a-card {
   cursor: pointer;
 }
 
-.mode-select {
-  width: 100%;
-  margin: 5rem auto;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 1.5rem;
-  min-height: 70vh;
-}
-
-.mode-select-item {
-  width: 30%;
-  height: auto
-}
-
-/* 语言卡片样式 */
-.language-card {
-  text-align: center;
-  border-radius: 8px;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.language-card:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-}
 
 .test-individual {
   width: 80%;
@@ -902,17 +854,6 @@ a-card {
   font-size: 18px;
   box-sizing: border-box;
   user-select: none;
-}
-
-@media (max-width: 768px) {
-  .mode-select {
-    flex-direction: column;
-  }
-
-  .mode-select-item {
-    width: 70%;
-    height: auto
-  }
 }
 
 .matching-container {
