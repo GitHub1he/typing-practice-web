@@ -8,6 +8,16 @@
   <ModeSelection v-if="currentModeSelect === 'MODE_CHANGE_MODE'" @start-individual="StartIndividualTest"
     @start-match="StartMatch" />
 
+  <!-- 匹配中 -->
+  <div class="test-individual" v-if="currentModeSelect === 'MODE_MATCH_ING'">
+    <MatchingView @cancel-matching="cancelMatching" />
+  </div>
+
+  <!-- 匹配成功 -->
+  <div class="test-individual" v-if="currentModeSelect === 'MODE_MATCH_SUCCESS'">
+    <MatchSuccessView :match-info="matchInfo" :current-match-mode="currentMatchMode" @ready="handleReady" />
+  </div>
+
   <div class="test-individual" @paste.capture.prevent=false @copy.capture.prevent=false @keydown="handleKeydown"
     tabindex="0"
     v-if="currentModeSelect === 'MODE_INDIVIDUAL_TEST_INIT' || currentModeSelect === 'MODE_INDIVIDUAL_TEST_ING'">
@@ -82,60 +92,7 @@
     <AfterPracticeView />
   </div>
 
-  <!-- 匹配中 -->
-  <div class="test-individual" v-if="currentModeSelect === 'MODE_MATCH_ING'">
-    <div class="matching-container">
-      <div class="matching-circle">
-        <div class="circle-dots">
-          <span v-for="i in 4" :key="i" class="dot"></span>
-        </div>
-        <div class="matching-text">
-          <div class="matching-number">{{ matchingTime }}</div>
-          <div class="matching-status">匹配中...</div>
-        </div>
-      </div>
-      <a-button type="primary" class="cancel-match-btn" @click="cancelMatching">取消匹配</a-button>
-    </div>
-  </div>
 
-  <!-- 匹配成功 -->
-  <div class="test-individual" v-if="currentModeSelect === 'MODE_MATCH_SUCCESS'">
-    <div class="match-success-container">
-      <div class="match-overlay">
-        <div class="match-content">
-          <div class="players-container">
-            <div class="player-card" :class="{ 'ready': matchInfo?.player1?.ready }">
-              <div class="player-avatar">
-                <a-avatar :size="100" :src="utils.getAvatarSrc(matchInfo?.player1?.avatar || '1')">
-                </a-avatar>
-              </div>
-              <div class="player-name">{{ matchInfo?.player1?.nickName || '玩家1' }}</div>
-              <div class="ready-status">{{ matchInfo?.player1?.ready ? '已准备' : '未准备' }}</div>
-            </div>
-            <div class="vs-text">VS</div>
-            <div class="player-card" :class="{ 'ready': matchInfo?.player2?.ready }">
-              <div class="player-avatar">
-                <a-avatar :size="100" :src="utils.getAvatarSrc(matchInfo?.player2?.avatar || '1')"></a-avatar>
-              </div>
-              <div class="player-name">{{ matchInfo?.player2?.nickName || '玩家2' }}</div>
-              <div class="ready-status">{{ matchInfo?.player2?.ready ? '已准备' : '未准备' }}</div>
-            </div>
-          </div>
-
-          <template v-if="currentMatchMode === '0'">
-            <a-button type="primary" class="ready-btn" :disabled="isReady" @click="handleReady">
-              {{ isReady ? '已准备' : '准备' }}
-            </a-button>
-          </template>
-          <template v-else>
-            <div class="other-mode-info">
-              <p>其他比赛模式正在开发中...</p>
-            </div>
-          </template>
-        </div>
-      </div>
-    </div>
-  </div>
 
   <a-modal v-model:open="confirmReConnect" title="是否确认登录" :confirm-loading="confirmLoading" @ok="handleConfirmReConnect"
     @cancel="cancelConfirmReConnect">
@@ -146,6 +103,8 @@
 <script setup>
 import StatusBar from '@/components/Test/StatusBar.vue';
 import ModeSelection from '@/components/Test/ModeSelection.vue';
+import MatchingView from '@/components/Test/MatchingView.vue';
+import MatchSuccessView from '@/components/Test/MatchSuccessView.vue';
 import { onMounted, onBeforeUnmount, computed, ref, provide } from 'vue';
 import { useStore } from 'vuex';
 import baseUrl from '@/api/base';
@@ -172,10 +131,7 @@ let retryCount = 0;
 const maxRetries = 1;
 let confirmCode;
 let selectLanguages = null;
-const matchingTime = ref(0);
-let matchingTimer = null;
 const matchInfo = ref(null); // 存储匹配信息
-const isReady = ref(false); // 准备状态
 const currentMatchMode = ref(''); // 存储当前比赛模式
 
 const fontSize = ref(16);
@@ -571,18 +527,12 @@ const StartMatch = async (matchMode) => {
   }
   currentModeSelect.value = 'MODE_MATCH_ING';
   currentMatchMode.value = matchMode.toString(); // 保存比赛模式
-  // 开始计时
-  matchingTime.value = 0;
-  matchingTimer = setInterval(() => {
-    matchingTime.value++;
-  }, 1000);
 
   sendMessage(getMsg('MATCH', 'START', JSON.stringify({ "matchMode": `${matchMode}` })));
 }
 
 const cancelMatching = () => {
   if (currentModeSelect.value === 'MODE_MATCH_ING') {
-    clearInterval(matchingTimer);
     sendMessage(getMsg('MATCH', 'CANCEL'));
     currentModeSelect.value = 'MODE_CHANGE_MODE';
   } else {
@@ -815,7 +765,6 @@ const handleReady = () => {
     utils.tip("房间信息获取失败", "error");
     return;
   }
-  isReady.value = true;
   sendMessage(getMsg('PKONEONONE', 'READY', JSON.stringify({
     roomId: matchInfo.value.roomId
   }), matchInfo.value.roomId.toString()));
@@ -856,217 +805,11 @@ a-card {
   user-select: none;
 }
 
-.matching-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 70vh;
-}
-
-.matching-circle {
-  position: relative;
-  width: 200px;
-  height: 200px;
-  border-radius: 50%;
-  background: #3f51b5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 2rem;
-}
-
-.circle-dots {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  animation: rotate 4s linear infinite;
-}
-
-.dot {
-  position: absolute;
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 4px solid rgba(255, 255, 255, 0.3);
-  transition: all 0.3s ease;
-}
-
-.dot:nth-child(1) {
-  top: 10%;
-  left: 50%;
-}
-
-.dot:nth-child(2) {
-  top: 50%;
-  right: 10%;
-}
-
-.dot:nth-child(3) {
-  bottom: 10%;
-  left: 50%;
-}
-
-.dot:nth-child(4) {
-  top: 50%;
-  left: 10%;
-}
-
-@keyframes rotate {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.matching-text {
-  text-align: center;
-  color: white;
-  z-index: 1;
-}
-
-.matching-number {
-  font-size: 3rem;
-  font-weight: bold;
-  margin-bottom: 0.5rem;
-}
-
-.matching-status {
-  font-size: 1.2rem;
-}
-
-.cancel-match-btn {
-  font-size: 1.2rem;
-  padding: 0.5rem 2rem;
-  height: auto;
-  background-color: #4CAF50;
-  border-color: #4CAF50;
-}
-
-.cancel-match-btn:hover {
-  background-color: #45a049;
-  border-color: #45a049;
-}
-
 /* 去除全局滚动条 */
 :root {
   overflow: hidden;
 }
 
-.match-success-container {
-  width: 100%;
-  height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  overflow: hidden;
-}
-
-.match-overlay {
-  width: 100%;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.match-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4rem;
-}
-
-.players-container {
-  display: flex;
-  align-items: center;
-  gap: 4rem;
-}
-
-.player-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  padding: 2rem;
-  border-radius: 1.5rem;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(5px);
-  transition: all 0.3s ease;
-  box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
-}
-
-.player-card.ready {
-  background: rgba(82, 196, 26, 0.15);
-  box-shadow: 0 8px 32px rgba(82, 196, 26, 0.2);
-}
-
-.player-avatar {
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 4px solid rgba(255, 255, 255, 0.3);
-  transition: all 0.3s ease;
-}
-
-.player-card.ready .player-avatar {
-  border-color: rgba(82, 196, 26, 0.6);
-}
-
-.player-name {
-  color: white;
-  font-size: 1.4rem;
-  font-weight: bold;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.ready-status {
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 1.1rem;
-}
-
-.player-card.ready .ready-status {
-  color: #52c41a;
-  font-weight: bold;
-}
-
-.vs-text {
-  color: white;
-  font-size: 2.5rem;
-  font-weight: bold;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.ready-btn {
-  padding: 0.8rem 4rem;
-  font-size: 1.3rem;
-  height: auto;
-  border-radius: 2rem;
-  border: none;
-  background: linear-gradient(45deg, #1890ff, #40a9ff);
-  box-shadow: 0 4px 15px rgba(24, 144, 255, 0.3);
-  transition: all 0.3s ease;
-}
-
-.ready-btn:not(:disabled):hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(24, 144, 255, 0.4);
-  background: linear-gradient(45deg, #40a9ff, #69c0ff);
-}
-
-.ready-btn:disabled {
-  background: linear-gradient(45deg, #52c41a, #73d13d);
-  opacity: 0.8;
-  cursor: not-allowed;
-}
 
 /* 倒计时样式 */
 .countdown-container {
