@@ -18,64 +18,18 @@
     <MatchSuccessView :match-info="matchInfo" :current-match-mode="currentMatchMode" @ready="handleReady" />
   </div>
 
-  <div class="common-card" @paste.capture.prevent=false @copy.capture.prevent=false @keydown="handleKeydown"
-    tabindex="0"
-    v-if="currentModeSelect === 'MODE_INDIVIDUAL_TEST_INIT' || currentModeSelect === 'MODE_INDIVIDUAL_TEST_ING'">
-    <div class="test-header">
-      <div class="font-change">
-        <a-button type="dashed" @click="increaseFontSize()">+</a-button>
-        <a-button type="dashed" @click="decreaseFontSize()">-</a-button>
-      </div>
-      <div class="showing-data">
-        <label>{{ inputContent.length }}/{{ sourceContent.length }}</label>
-        <label>正确率:{{ Number(scoreInfo.accuracy) * 100 }}% </label>
-        <label>速度:{{ scoreInfo.speed }}字/秒 </label>
-        <label>用时:{{ scoreInfo.actualDuration }}秒 </label>
-        <label style="color: red;">{{ scoreInfo.tipMsg }} </label>
-      </div>
-      <div class="option-btn">
-        <a-button type="dashed" @click="updateIsSideBySide()">改变布局</a-button>
-        <a-button type="primary" @click="individualSubmit()">提交成绩(Ctrl+Enter)</a-button>
-      </div>
-    </div>
+  <!-- 个人测试 -->
+  <IndividualTestView
+    v-if="currentModeSelect === 'MODE_INDIVIDUAL_TEST_INIT' || currentModeSelect === 'MODE_INDIVIDUAL_TEST_ING'"
+    :source-content="sourceContent" :input-content="inputContent" :current-mode-select="currentModeSelect"
+    @individual-input-data="individualInputData" @individual-submit="individualSubmit"
+    @is-composing-change="handleIsComposingChange" />
 
-    <div :class="{ 'flex-container': isSideBySide }">
-      <a-textarea :value="sourceContent" id="individual_source_text" class="custom-textarea" readonly
-        :style="{ fontSize: fontSize + 'px', ...textareaAutoSize }" />
-      <a-textarea :value="inputContent" @input="individualInputData" @compositionstart="handleCompositionStart"
-        @compositionend="handleCompositionEnd" placeholder="请输入您的文字" class="custom-textarea"
-        :style="{ fontSize: fontSize + 'px', ...textareaAutoSize }" />
-    </div>
-  </div>
 
-  <div class="common-card" @paste.capture.prevent=false @copy.capture.prevent=false @keydown="handleKeydown"
-    tabindex="0" v-if="currentModeSelect === 'MODE_ONE_ON_ONE_ING'">
-    <div class="test-header">
-      <div class="font-change">
-        <a-button type="dashed" @click="increaseFontSize()">+</a-button>
-        <a-button type="dashed" @click="decreaseFontSize()">-</a-button>
-      </div>
-      <div class="showing-data">
-        <label>{{ inputContent.length }}/{{ sourceContent.length }}</label>
-        <label>正确率:{{ Number(scoreInfo.accuracy) * 100 }}% </label>
-        <label>速度:{{ scoreInfo.speed }}字/秒 </label>
-        <label>用时:{{ scoreInfo.actualDuration }}秒 </label>
-        <label style="color: red;">{{ scoreInfo.tipMsg }} </label>
-      </div>
-      <div class="option-btn">
-        <a-button type="dashed" @click="updateIsSideBySide()">改变布局</a-button>
-        <a-button type="primary" @click="oneOnOneSubmit()">提交成绩(Ctrl+Enter)</a-button>
-      </div>
-    </div>
-
-    <div :class="{ 'flex-container': isSideBySide }">
-      <a-textarea :value="sourceContent" id="oneOnOne_source_text" class="custom-textarea" readonly
-        :style="{ fontSize: fontSize + 'px', ...textareaAutoSize }" />
-      <a-textarea :value="inputContent" @input="oneOnOneInputData" @compositionstart="handleCompositionStart"
-        @compositionend="handleCompositionEnd" placeholder="请输入您的文字" class="custom-textarea"
-        :style="{ fontSize: fontSize + 'px', ...textareaAutoSize }" />
-    </div>
-  </div>
+  <!-- 一对一对战 -->
+  <OneOnOneView v-if="currentModeSelect === 'MODE_ONE_ON_ONE_ING'" :source-content="sourceContent"
+    :input-content="inputContent" :current-mode-select="currentModeSelect" @one-on-one-input-data="oneOnOneInputData"
+    @one-on-one-submit="oneOnOneSubmit" @is-composing-change="handleIsComposingChange" />
 
   <!-- 添加对战倒计时组件 -->
   <div class="common-card" v-if="currentModeSelect === 'MODE_ONE_ON_ONE_WAIT'">
@@ -103,6 +57,8 @@ import StatusBar from '@/components/Test/StatusBar.vue';
 import ModeSelection from '@/components/Test/ModeSelection.vue';
 import MatchingView from '@/components/Test/MatchingView.vue';
 import MatchSuccessView from '@/components/Test/MatchSuccessView.vue';
+import IndividualTestView from '@/components/Test/IndividualTestView.vue';
+import OneOnOneView from '@/components/Test/OneOnOneView.vue';
 import { onMounted, onBeforeUnmount, computed, ref, provide } from 'vue';
 import { useStore } from 'vuex';
 import baseUrl from '@/api/base';
@@ -132,7 +88,6 @@ let selectLanguages = null;
 const matchInfo = ref(null); // 存储匹配信息
 const currentMatchMode = ref(''); // 存储当前比赛模式
 
-const fontSize = ref(16);
 const isSideBySide = ref(false);//视图，文本框上下/左右分布
 const sourceContent = ref('');
 const inputContent = ref('');
@@ -174,14 +129,10 @@ const decodeMessage = (buffer) => {
   return resType.toObject(message);
 };
 
-onMounted(() => {
-  window.addEventListener('keydown', handleKeydown);
-});
 
 // 在组件卸载时关闭 WebSocket 连接
 onBeforeUnmount(() => {
   wsLogout();
-  window.removeEventListener('keydown', handleKeydown);
 });
 
 const connectWebSocket = () => {
@@ -546,38 +497,6 @@ const textareaAutoSize = computed(() => {
     margin: isSideBySide.value ? '4px 8px' : '8px 4px'
   };
 });
-const increaseFontSize = () => {
-  if (fontSize.value < 30) {
-    fontSize.value += 2;
-  }
-};
-const decreaseFontSize = () => {
-  if (fontSize.value > 12) {
-    fontSize.value -= 2;
-  }
-};
-const updateIsSideBySide = () => {
-  isSideBySide.value = !isSideBySide.value;
-};
-
-const handleCompositionStart = () => {
-  isComposing.value = true;
-};
-
-const handleCompositionEnd = () => {
-  isComposing.value = false;
-};
-const handleKeydown = (event) => {
-  // 监听 Ctrl+Enter 的方法
-  if (currentModeSelect.value === 'MODE_INDIVIDUAL_TEST_ING'
-    && event.ctrlKey && event.key === 'Enter') {
-    individualSubmit();
-  }
-  if (currentModeSelect.value === 'MODE_ONE_ON_ONE_ING'
-    && event.ctrlKey && event.key === 'Enter') {
-    oneOnOneSubmit();
-  }
-};
 
 /** 个人测试-输入文字处理 */
 const individualInputData = (event) => {
@@ -614,6 +533,9 @@ const startIndividualTestCollectTimer = () => {
     clearTimeout(individualTestCollectTimer)
     startIndividualTestCollectTimer();
   }, 20000);
+};
+const handleIsComposingChange = (value) => {
+  isComposing.value = value;
 };
 const startIndividualTestAppendTimer = () => {
   const textarea = document.getElementById('individual_source_text');
@@ -779,28 +701,6 @@ a-card {
 .common-card {
   width: 80%;
   margin: 4rem auto 0 auto;
-}
-
-.test-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.font-change,
-.showing-data,
-.option-btn {
-  display: inline-block;
-}
-
-.flex-container {
-  display: flex;
-}
-
-.custom-textarea {
-  font-size: 18px;
-  box-sizing: border-box;
-  user-select: none;
 }
 
 /* 去除全局滚动条 */
