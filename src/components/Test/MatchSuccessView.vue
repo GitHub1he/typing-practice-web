@@ -1,41 +1,4 @@
 <template>
-    <!-- <div class="test-individual" v-if="currentModeSelect === 'MODE_MATCH_SUCCESS'">
-    <div class="match-success-container">
-      <div class="match-overlay">
-        <div class="match-content">
-          <div class="players-container">
-            <div class="player-card" :class="{ 'ready': matchInfo?.player1?.ready }">
-              <div class="player-avatar">
-                <a-avatar :size="100" :src="utils.getAvatarSrc(matchInfo?.player1?.avatar || '1')">
-                </a-avatar>
-              </div>
-              <div class="player-name">{{ matchInfo?.player1?.nickName || '玩家1' }}</div>
-              <div class="ready-status">{{ matchInfo?.player1?.ready ? '已准备' : '未准备' }}</div>
-            </div>
-            <div class="vs-text">VS</div>
-            <div class="player-card" :class="{ 'ready': matchInfo?.player2?.ready }">
-              <div class="player-avatar">
-                <a-avatar :size="100" :src="utils.getAvatarSrc(matchInfo?.player2?.avatar || '1')"></a-avatar>
-              </div>
-              <div class="player-name">{{ matchInfo?.player2?.nickName || '玩家2' }}</div>
-              <div class="ready-status">{{ matchInfo?.player2?.ready ? '已准备' : '未准备' }}</div>
-            </div>
-          </div>
-
-          <template v-if="currentMatchMode === '0'">
-            <a-button type="primary" class="ready-btn" :disabled="isReady" @click="handleReady">
-              {{ isReady ? '已准备' : '准备' }}
-            </a-button>
-          </template>
-<template v-else>
-            <div class="other-mode-info">
-              <p>其他比赛模式正在开发中...</p>
-            </div>
-          </template>
-</div>
-</div>
-</div>
-</div> -->
     <div class="match-success-container">
         <div class="match-overlay">
             <div class="match-content">
