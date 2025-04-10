@@ -9,16 +9,16 @@
     @start-match="StartMatch" />
 
   <!-- 匹配中 -->
-  <div class="test-individual" v-if="currentModeSelect === 'MODE_MATCH_ING'">
+  <div class="common-card" v-if="currentModeSelect === 'MODE_MATCH_ING'">
     <MatchingView @cancel-matching="cancelMatching" />
   </div>
 
   <!-- 匹配成功 -->
-  <div class="test-individual" v-if="currentModeSelect === 'MODE_MATCH_SUCCESS'">
+  <div class="common-card" v-if="currentModeSelect === 'MODE_MATCH_SUCCESS'">
     <MatchSuccessView :match-info="matchInfo" :current-match-mode="currentMatchMode" @ready="handleReady" />
   </div>
 
-  <div class="test-individual" @paste.capture.prevent=false @copy.capture.prevent=false @keydown="handleKeydown"
+  <div class="common-card" @paste.capture.prevent=false @copy.capture.prevent=false @keydown="handleKeydown"
     tabindex="0"
     v-if="currentModeSelect === 'MODE_INDIVIDUAL_TEST_INIT' || currentModeSelect === 'MODE_INDIVIDUAL_TEST_ING'">
     <div class="test-header">
@@ -48,7 +48,7 @@
     </div>
   </div>
 
-  <div class="test-individual" @paste.capture.prevent=false @copy.capture.prevent=false @keydown="handleKeydown"
+  <div class="common-card" @paste.capture.prevent=false @copy.capture.prevent=false @keydown="handleKeydown"
     tabindex="0" v-if="currentModeSelect === 'MODE_ONE_ON_ONE_ING'">
     <div class="test-header">
       <div class="font-change">
@@ -78,7 +78,7 @@
   </div>
 
   <!-- 添加对战倒计时组件 -->
-  <div class="test-individual" v-if="currentModeSelect === 'MODE_ONE_ON_ONE_WAIT'">
+  <div class="common-card" v-if="currentModeSelect === 'MODE_ONE_ON_ONE_WAIT'">
     <div class="countdown-container">
       <div class="countdown-circle">
         <div class="countdown-number">{{ countdownTime }}</div>
@@ -87,12 +87,10 @@
     </div>
   </div>
 
-  <div class="test-individual"
+  <div class="common-card"
     v-if="currentModeSelect === 'MODE_INDIVIDUAL_TEST_END' || currentModeSelect === 'MODE_ONE_ON_ONE_END'">
     <AfterPracticeView />
   </div>
-
-
 
   <a-modal v-model:open="confirmReConnect" title="是否确认登录" :confirm-loading="confirmLoading" @ok="handleConfirmReConnect"
     @cancel="cancelConfirmReConnect">
@@ -778,7 +776,7 @@ a-card {
 }
 
 
-.test-individual {
+.common-card {
   width: 80%;
   margin: 4rem auto 0 auto;
 }
