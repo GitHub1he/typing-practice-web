@@ -1,8 +1,6 @@
-// todo
-// 1. 连接前调用获取地址
 <template>
   <!-- 右上角状态显示 -->
-  <StatusBar :ws-status="wsStatus" @logout="wsLogout" @connect="connectWebSocket" />
+  <WebSocketStatus />
 
   <!-- 模式选择 -->
   <ModeSelection v-if="currentModeSelect === 'MODE_CHANGE_MODE'" @start-individual="StartIndividualTest"
@@ -25,7 +23,6 @@
     @individual-input-data="individualInputData" @individual-submit="individualSubmit"
     @is-composing-change="handleIsComposingChange" />
 
-
   <!-- 一对一对战 -->
   <OneOnOneView v-if="currentModeSelect === 'MODE_ONE_ON_ONE_ING'" :source-content="sourceContent"
     :input-content="inputContent" :current-mode-select="currentModeSelect" @one-on-one-input-data="oneOnOneInputData"
@@ -45,430 +42,147 @@
     v-if="currentModeSelect === 'MODE_INDIVIDUAL_TEST_END' || currentModeSelect === 'MODE_ONE_ON_ONE_END'">
     <AfterPracticeView />
   </div>
-
-  <a-modal v-model:open="confirmReConnect" title="是否确认登录" :confirm-loading="confirmLoading" @ok="handleConfirmReConnect"
-    @cancel="cancelConfirmReConnect">
-    <p>{{ modalText }}</p>
-  </a-modal>
 </template>
 
 <script setup>
-import StatusBar from '@/components/Test/StatusBar.vue';
+import WebSocketStatus from '@/components/Common/WebSocketStatus.vue';
 import ModeSelection from '@/components/Test/ModeSelection.vue';
 import MatchingView from '@/components/Test/MatchingView.vue';
 import MatchSuccessView from '@/components/Test/MatchSuccessView.vue';
 import IndividualTestView from '@/components/Test/IndividualTestView.vue';
 import OneOnOneView from '@/components/Test/OneOnOneView.vue';
-import { onMounted, onBeforeUnmount, computed, ref, provide } from 'vue';
-import { useStore } from 'vuex';
-import baseUrl from '@/api/base';
-import api from '@/api/index.js';
-import utils from '@/api/utils/generalUtil';
 import AfterPracticeView from './Practice/AfterPracticeView.vue';
-import resProtoRoot from '../js/resProto.js';
-import reqProtoRoot from '../js/reqProto.js';
-import { ReqMsg } from '../js/ReqMsg';
-import { CheckCircleOutlined, SyncOutlined, CloseCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons-vue';
+import { onMounted, ref, provide } from 'vue';
+import utils from '@/api/utils/generalUtil';
+import WebSocketService from '@/services/WebSocketService';
+import TypingWebSocketService from '@/services/TypingWebSocketService';
 
-const store = useStore();
-// 控制语言选项显示与隐藏
-const modalText = ref('是否确认重新登录');
-const confirmReConnect = ref(false);
-const confirmLoading = ref(false);
-
-let ws = null; // 用来保存 WebSocket 实例
-let wsStatus = ref('init'); // 连接状态：'init', 'connected', 'connecting', 'disconnected'
-let webSocketPingTimer = null; // 心跳定时器
-const webSocketPingTime = 12000; // 心跳的间隔，当前为12秒,
-const heartbeat = '[0513]';
-let retryCount = 0;
-const maxRetries = 1;
-let confirmCode;
-let selectLanguages = null;
+// 状态变量
 const matchInfo = ref(null); // 存储匹配信息
 const currentMatchMode = ref(''); // 存储当前比赛模式
-
-const isSideBySide = ref(false);//视图，文本框上下/左右分布
 const sourceContent = ref('');
 const inputContent = ref('');
 const sequence = ref(0); // 个人测试接收消息次序
-let individualTestIngTimer = null;
-let individualTestCollectTimer = null;
-let individualTestAppendTimer = null;
 const individualAppendIndex = ref(0); // 个人测试追加文章数据
-const bufferData = ref({ individualAppendData: "", accuracy: "", speed: "", actualDuration: "", });// 个人测试追加文章数据,防止直接更新sourceContent会组件刷新，导致中文未确认字符丢失
+const bufferData = ref({ individualAppendData: "", accuracy: "", speed: "", actualDuration: "" }); // 个人测试追加文章数据
 const typingInterval = 100; // 设置打字机字符显示间隔（毫秒）
 const isComposing = ref(false); // 当前是否中文输入状态
-const currentModeSelect = ref('MODE_CHANGE_MODE'); // 个人测试是否已开始
+const currentModeSelect = ref('MODE_CHANGE_MODE'); // 当前模式
 const scoreInfo = ref({});
 const countdownTime = ref(3); // 倒计时初始值
 let countdownTimer = null; // 倒计时定时器
+let individualTestIngTimer = null;
+let individualTestCollectTimer = null;
+let individualTestAppendTimer = null;
+
+// 提供给子组件的数据
 provide('scoreInfo', scoreInfo);
 
-// 获取消息类型
-const reqType = reqProtoRoot.lookupType("RequestMsg");
-const resType = resProtoRoot.lookupType("RespMsg");
-// const msgType = msgProtoRoot.lookupType("Msg");
-
-// 编码函数,使用请求报文编码
-const encodeMessage = (msgObj) => {
-  // messages.value.push(`You: `, JSON.stringify(msgObj));
-  // 验证消息对象
-  const errMsg = reqType.verify(msgObj);
-  if (errMsg) throw Error(errMsg);
-
-  // 编码消息
-  const message = reqType.create(msgObj); // 创建消息实例
-  const buffer = reqType.encode(message).finish(); // 编码为字节数组
-  return buffer;
-};
-
-// 解码消息
-const decodeMessage = (buffer) => {
-  const message = resType.decode(buffer);
-  return resType.toObject(message);
-};
-
-
-// 在组件卸载时关闭 WebSocket 连接
-onBeforeUnmount(() => {
-  wsLogout();
+// 初始化WebSocket服务
+onMounted(() => {
+  setupWebSocketCallbacks();
 });
 
-const connectWebSocket = () => {
-  return new Promise((resolve, reject) => {
-    wsStatus.value = 'connecting'
-    ws = new WebSocket(`${baseUrl.wsUrl}?a=${store.state.user.access}`);
-    ws.onopen = () => {
-      sendMessage(getMsg('CONNECT'));
-    }
+// 设置WebSocket回调
+const setupWebSocketCallbacks = () => {
+  TypingWebSocketService.setCallbacks({
+    onModeChange: (mode) => {
+      currentModeSelect.value = mode;
+    },
+    onContentUpdate: (content) => {
+      sourceContent.value = content;
+    },
+    onProgressUpdate: (data) => {
+      bufferData.value.speed = data.speed;
+      bufferData.value.accuracy = data.accuracy;
+      bufferData.value.actualDuration = data.actualDuration;
 
-    ws.onmessage = (event) => {
-      // 如果收到 CONFIRM_HEARTBEAT，则立即发送心跳
-      if (event.data === 'CONFIRM_HEARTBEAT') {
-        sendMessage(heartbeat);
-        return;
+      if (Number(sequence.value) + 1 === Number(data.sequence)) {
+        sequence.value = Number(data.sequence);
+        bufferData.value.individualAppendData += data.appendData;
+      } else {
+        console.log('次序不同,发送COLLECT报文');
+        if (currentModeSelect.value === 'MODE_INDIVIDUAL_TEST_ING') {
+          TypingWebSocketService.requestCollect();
+        } else if (currentModeSelect.value === 'MODE_ONE_ON_ONE_ING') {
+          TypingWebSocketService.requestBattleCollect(matchInfo.value.roomId.toString());
+        }
       }
-      if (event.data === '[1128]') {
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const buffer = new Uint8Array(e.target.result); // 将结果转换为 Uint8Array
-
-        try {
-          const res = decodeMessage(buffer); // 调用 decode 函数
-          console.log("Decoded message:", res);
-          // messages.value.push(res);
-          switch (res.code) {
-            case 'C0001':
-              // 连接成功
-              startHeartbeat();
-              wsStatus.value = 'connected';
-              resolve();
-              break;
-            case 'C00011':
-              // 确认重新登录
-              confirmCode = res.data;
-              confirmReConnect.value = true;
-              break;
-            case 'C0002':
-              // 连接失败
-              ws.close();
-              currentModeSelect.value = 'MODE_CHANGE_MODE';
-              break;
-            case 'C0003':
-              // 被重连
-              ws.close();
-              utils.tip('异地登录', 'warning')
-              currentModeSelect.value = 'MODE_CHANGE_MODE';
-              break;
-            case 'C0004':
-              // 登出
-              wsStatus.value = 'disconnected';
-              break;
-            case 'C0006':
-              // 提示
-              if (currentModeSelect.value === 'MODE_INDIVIDUAL_TEST_ING') {
-                scoreInfo.value.tipMsg = res.msg;
-              } else {
-                utils.tip(res.msg, "warning");
-              }
-              break;
-            case 'C4000':
-              // sourceContent 值替换会触发视图的重新渲染
-              if (res.msg === 'INIT') {
-                currentModeSelect.value = 'MODE_INDIVIDUAL_TEST_INIT'
-                sourceContent.value = res.data
-              } if (res.msg === 'ING') {
-                const parseDate = JSON.parse(res.data);
-                bufferData.value.speed = parseDate.speed;
-                bufferData.value.accuracy = parseDate.accuracy;
-                bufferData.value.actualDuration = parseDate.actualDuration;
-                if (Number(sequence.value) + 1 === Number(parseDate.sequence)) {
-                  sequence.value = Number(parseDate.sequence);
-                  bufferData.value.individualAppendData += parseDate.appendData;
-                } else {
-                  console.log('次序不同,发送COLLECT报文')
-                  sendMessage(getMsg('TEST_INDIVIDUAL', 'COLLECT', ''))
-                }
-              } else if (res.msg === 'COLLECT') {
-                const parseDate = JSON.parse(res.data);
-                sourceContent.value = parseDate.appendData;
-                sequence.value = Number(parseDate.sequence);
-                bufferData.value.individualAppendData = '';
-                individualAppendIndex.value = 0;
-              } else if (res.msg === 'END') {
-                // 展示练习情况
-                clearIndividualTestTimer();
-                scoreInfo.value = JSON.parse(res.data);
-                currentModeSelect.value = 'MODE_INDIVIDUAL_TEST_END'
-                wsLogout();
-              }
-              break;
-            case 'C4100':
-              if (res.msg === 'INIT') {
-                StartIndividualTest(selectLanguages);
-              }
-              break;
-            case 'C5000':
-              if (res.msg === 'MATCHING') {
-                currentModeSelect.value = 'MODE_MATCH_ING'
-              } else if (res.msg === 'CANCEL_MATCH') {
-                utils.tip("取消匹配", "info");
-                currentModeSelect.value = 'MODE_CHANGE_MODE'
-              } else if (res.msg === 'MATCH_SUCCESS') {
-                utils.tip("匹配成功", "info");
-                const parseDate = JSON.parse(res.data);
-                console.log("匹配成功：", parseDate)
-                matchInfo.value = {
-                  roomId: parseDate.roomId,
-                  player1: {
-                    ...parseDate.players[0],
-                    ready: false
-                  },
-                  player2: {
-                    ...parseDate.players[1],
-                    ready: false
-                  }
-                };
-                currentModeSelect.value = 'MODE_MATCH_SUCCESS'
-              } else if (res.msg === 'MATCH_FAIL') {
-                utils.tip("匹配失败", "error");
-                currentModeSelect.value = 'MODE_CHANGE_MODE'
-              }
-              break;
-            case 'C5100':
-              if (res.msg === 'READY') {
-                // 处理玩家准备状态更新
-                const parseDate = JSON.parse(res.data);
-                console.log("准备：", parseDate);
-                // 更新整个玩家列表的状态
-                matchInfo.value = {
-                  ...matchInfo.value,
-                  player1: {
-                    ...matchInfo.value.player1,
-                    ready: parseDate.players[0].ready
-                  },
-                  player2: {
-                    ...matchInfo.value.player2,
-                    ready: parseDate.players[1].ready
-                  }
-                };
-              } else if (res.msg === 'NONROOM') {
-                utils.tip("准备失败，房间不存在", "error");
-                currentModeSelect.value = 'MODE_CHANGE_MODE'
-              }
-              break;
-            case 'C6000':
-              if (res.msg === 'START') {
-                // todo 增加currentModeSelect 为倒计时，到后端返回的时间后变化模式为ing
-                currentModeSelect.value = 'MODE_ONE_ON_ONE_WAIT'
-                sourceContent.value = res.data
-                startCountdown(); // 开始倒计时
-              } else if (res.msg === 'ING') {
-                const parseDate = JSON.parse(res.data);
-                console.log("比赛中：", parseDate);
-                bufferData.value.speed = parseDate.speed;
-                bufferData.value.accuracy = parseDate.accuracy;
-                bufferData.value.actualDuration = parseDate.actualDuration;
-                if (Number(sequence.value) + 1 === Number(parseDate.sequence)) {
-                  sequence.value = Number(parseDate.sequence);
-                  bufferData.value.individualAppendData += parseDate.appendData;
-                } else {
-                  console.log('次序不同,发送COLLECT报文')
-                  sendMessage(getMsg('TEST_INDIVIDUAL', 'COLLECT', ''))
-                }
-              } else if (res.msg === 'COLLECT') {
-                const parseDate = JSON.parse(res.data);
-                sourceContent.value = parseDate.appendData;
-                sequence.value = Number(parseDate.sequence);
-                bufferData.value.individualAppendData = '';
-                individualAppendIndex.value = 0;
-              } else if (res.msg === 'END') {
-                // 展示练习情况
-                clearIndividualTestTimer();
-                scoreInfo.value = JSON.parse(res.data);
-                currentModeSelect.value = 'MODE_ONE_ON_ONE_END'
-                wsLogout();
-              }
-              break;
-            default:
-              // 其他
-              console.log("接收到消息：", res)
-              break;
-          }
-        } catch (error) {
-          console.error("Error decoding message:", error);
+    },
+    onCollectUpdate: (data) => {
+      sourceContent.value = data.appendData;
+      sequence.value = Number(data.sequence);
+      bufferData.value.individualAppendData = '';
+      individualAppendIndex.value = 0;
+    },
+    onTestEnd: (mode, data) => {
+      clearTimers();
+      scoreInfo.value = data;
+      currentModeSelect.value = mode;
+      WebSocketService.logout();
+    },
+    onMatchSuccess: (data) => {
+      matchInfo.value = {
+        roomId: data.roomId,
+        player1: {
+          ...data.players[0],
+          ready: false
+        },
+        player2: {
+          ...data.players[1],
+          ready: false
         }
       };
-
-      reader.readAsArrayBuffer(event.data);// 确保读取的是 ArrayBuffer
-    };
-    ws.onerror = (error) => {
-      wsStatus.value = 'disconnected'; // 更新状态为未连接
-      console.error('WebSocket connection error:', error);
-      retryCount++;
-      if (retryCount <= maxRetries) {
-        setTimeout(connectWebSocket, 2000); // 每2秒重试连接
+      currentModeSelect.value = 'MODE_MATCH_SUCCESS';
+    },
+    onReadyUpdate: (data) => {
+      matchInfo.value = {
+        ...matchInfo.value,
+        player1: {
+          ...matchInfo.value.player1,
+          ready: data.players[0].ready
+        },
+        player2: {
+          ...matchInfo.value.player2,
+          ready: data.players[1].ready
+        }
+      };
+    },
+    onCountdownStart: () => {
+      startCountdown();
+    },
+    onTipMessage: (msg) => {
+      if (currentModeSelect.value === 'MODE_INDIVIDUAL_TEST_ING') {
+        scoreInfo.value.tipMsg = msg;
       } else {
-        reject(error);  // 连接失败后 reject Promise
+        utils.tip(msg, "warning");
       }
-    };
-    ws.onclose = () => {
-      wsLogout();
-    };
-  })
-};
-
-const wsLogout = () => {
-  if (ws) {
-    sendMessage(getMsg('LOGIN_OUT'));
-    ws.close();
-  }
-  clearTimeout(webSocketPingTimer);
-  clearIndividualTestTimer();
-  clearOneOnOneTimer();
-  if (countdownTimer) {
-    clearInterval(countdownTimer);
-  }
-  wsStatus.value = 'disconnected'; // 更新状态为未连接
-  // 只有在非结束状态下才重置为MODE_CHANGE_MODE
-  if (currentModeSelect.value !== 'MODE_INDIVIDUAL_TEST_END' &&
-    currentModeSelect.value !== 'MODE_ONE_ON_ONE_END') {
-    currentModeSelect.value = 'MODE_CHANGE_MODE';
-  }
-};
-
-const startHeartbeat = () => {
-  webSocketPingTimer = setTimeout(() => {
-    if (wsStatus.value !== 'connected') {
-      return false;
+    },
+    // 添加获取当前模式的回调
+    getCurrentMode: () => {
+      return currentModeSelect.value;
     }
-    sendMessage(heartbeat);
-    clearTimeout(webSocketPingTimer);
-    // 重新执行
-    startHeartbeat();
-  }, webSocketPingTime);
+  });
 };
 
-// 发送消息到 WebSocket 服务器
-const sendMessage = (data) => {
-  ws.send(data);
-};
-
-
-/**
- * 获取不同类型的报文
- * @param type 消息类型：'CONNECT'、'RECONNECT'、'LOGIN_OUT'、'TEST_INDIVIDUAL'、'MATCH'
- * @param contentType head.msgContentType
- * @param data body.data
- */
-const getMsg = (type, contentType, data, roomId) => {
-  const reqMsg = new ReqMsg();
-  reqMsg.head.userId = store.state.user.user.userId;
-  // reqMsg.head.access = store.state.user.access;
-  reqMsg.head.timestamp = Math.floor(Date.now() / 1000);
-  switch (type) {
-    case 'CONNECT':
-      // 建立连接
-      reqMsg.head.msgType = 1
-      break;
-    case 'RECONNECT':
-      // 建立连接
-      reqMsg.head.msgType = 2
-      reqMsg.body.data = confirmCode;
-      break;
-    case 'LOGIN_OUT':
-      // 登出
-      reqMsg.head.msgType = -2
-      break;
-    case 'TEST_INDIVIDUAL':
-      // 个人测试
-      reqMsg.head.msgType = 4
-      reqMsg.head.msgContentType = contentType;
-      reqMsg.body.data = data;
-      break;
-    case 'MATCH':
-      // 匹配
-      reqMsg.head.msgType = 5
-      reqMsg.head.msgContentType = contentType;
-      reqMsg.body.data = data;
-      break;
-    case 'PKONEONONE':
-      // 一对一
-      reqMsg.head.msgType = 6
-      reqMsg.head.roomId = roomId;
-      reqMsg.head.msgContentType = contentType;
-      reqMsg.body.data = data;
-      break;
-    default:
-      // 其他
-      reqMsg.head.msgType = 9
-      break;
-  }
-
-  console.log('msg:', reqMsg)
-  return encodeMessage(reqMsg);
-}
-
-const handleConfirmReConnect = () => {
-  modalText.value = '正在连接...';
-  confirmLoading.value = true;
-
-  sendMessage(getMsg('RECONNECT'));
-
-  confirmReConnect.value = false;
-  confirmLoading.value = false;
-};
-const cancelConfirmReConnect = () => {
-  ws.close();
-  confirmReConnect.value = false;
-  confirmLoading.value = false;
-}
-
+// 开始个人测试
 const StartIndividualTest = async (language) => {
-  if (!ws || ws.readyState !== WebSocket.OPEN) {
+  if (WebSocketService.status !== 'connected') {
     try {
-      console.info('WebSocket 开始连接');
-      await api.baseApi.getWsAddr();
-      await connectWebSocket();  // 等待 WebSocket 连接成功
+      await WebSocketService.connect();
     } catch (error) {
       console.error('WebSocket 连接失败，无法发送消息');
       return;
     }
   }
-  selectLanguages = language;
-  sendMessage(getMsg('TEST_INDIVIDUAL', 'INIT', `${language}`));
-}
+  TypingWebSocketService.startIndividualTest(language);
+};
 
+// 开始匹配
 const StartMatch = async (matchMode) => {
-  if (!ws || ws.readyState !== WebSocket.OPEN) {
+  if (WebSocketService.status !== 'connected') {
     try {
-      console.info('WebSocket 开始连接');
-      await api.baseApi.getWsAddr();
-      await connectWebSocket();  // 等待 WebSocket 连接成功
+      await WebSocketService.connect();
     } catch (error) {
       console.error('WebSocket 连接失败，无法发送消息');
       return;
@@ -476,33 +190,28 @@ const StartMatch = async (matchMode) => {
   }
   currentModeSelect.value = 'MODE_MATCH_ING';
   currentMatchMode.value = matchMode.toString(); // 保存比赛模式
+  TypingWebSocketService.startMatch(matchMode);
+};
 
-  sendMessage(getMsg('MATCH', 'START', JSON.stringify({ "matchMode": `${matchMode}` })));
-}
-
+// 取消匹配
 const cancelMatching = () => {
   if (currentModeSelect.value === 'MODE_MATCH_ING') {
-    sendMessage(getMsg('MATCH', 'CANCEL'));
+    TypingWebSocketService.cancelMatch();
     currentModeSelect.value = 'MODE_CHANGE_MODE';
   } else {
     utils.tip("当前非匹配中状态", "warning");
   }
-}
+};
 
-const textareaAutoSize = computed(() => {
-  return {
-    height: isSideBySide.value ? '31.875rem' : '16.25rem',
-    minHeight: isSideBySide.value ? '31.875rem' : '16.25rem',
-    maxHeight: isSideBySide.value ? '31.875rem' : '16.25rem',
-    margin: isSideBySide.value ? '4px 8px' : '8px 4px'
-  };
-});
+// 处理中文输入状态变化
+const handleIsComposingChange = (value) => {
+  isComposing.value = value;
+};
 
-/** 个人测试-输入文字处理 */
+// 个人测试-输入文字处理
 const individualInputData = (event) => {
-
-  if (ws && currentModeSelect.value === 'MODE_INDIVIDUAL_TEST_INIT') {
-    console.log('个人测试-输入文字处理开始')
+  if (WebSocketService.status === 'connected' && currentModeSelect.value === 'MODE_INDIVIDUAL_TEST_INIT') {
+    console.log('个人测试-输入文字处理开始');
     currentModeSelect.value = 'MODE_INDIVIDUAL_TEST_ING';
     startIndividualTestIngTimer();
     startIndividualTestCollectTimer();
@@ -510,33 +219,35 @@ const individualInputData = (event) => {
   }
   currentModeSelect.value = 'MODE_INDIVIDUAL_TEST_ING';
   inputContent.value = event.target.value;
-}
-/** 个人测试-发送当前用户输入数据 */
+};
+
+// 个人测试-发送当前用户输入数据
 const startIndividualTestIngTimer = () => {
   individualTestIngTimer = setTimeout(() => {
     if (currentModeSelect.value !== 'MODE_INDIVIDUAL_TEST_ING') {
       clearIndividualTestTimer();
       return;
     }
-    sendMessage(getMsg('TEST_INDIVIDUAL', 'ING', inputContent.value));
-    clearTimeout(individualTestIngTimer)
+    // 使用TypingWebSocketService发送消息
+    TypingWebSocketService.sendIndividualProgress(inputContent.value);
+    clearTimeout(individualTestIngTimer);
     startIndividualTestIngTimer();
   }, 3000);
 };
+
 const startIndividualTestCollectTimer = () => {
   individualTestCollectTimer = setTimeout(() => {
     if (currentModeSelect.value !== 'MODE_INDIVIDUAL_TEST_ING') {
       clearIndividualTestTimer();
       return;
     }
-    sendMessage(getMsg('TEST_INDIVIDUAL', 'COLLECT', ''));
-    clearTimeout(individualTestCollectTimer)
+    // 使用TypingWebSocketService请求收集
+    TypingWebSocketService.requestCollect();
+    clearTimeout(individualTestCollectTimer);
     startIndividualTestCollectTimer();
   }, 20000);
 };
-const handleIsComposingChange = (value) => {
-  isComposing.value = value;
-};
+
 const startIndividualTestAppendTimer = () => {
   const textarea = document.getElementById('individual_source_text');
   individualTestAppendTimer = setTimeout(() => {
@@ -572,7 +283,8 @@ const individualSubmit = () => {
   if (currentModeSelect.value === 'MODE_INDIVIDUAL_TEST_ING') {
     currentModeSelect.value = 'MODE_INDIVIDUAL_TEST_END';
     clearIndividualTestTimer();
-    sendMessage(getMsg('TEST_INDIVIDUAL', 'END', inputContent.value));
+    // 使用TypingWebSocketService结束个人测试
+    TypingWebSocketService.endIndividualTest(inputContent.value);
   } else {
     utils.tip("输入文字开始", "warning");
   }
@@ -600,9 +312,18 @@ const startCountdown = () => {
     }
   }, 1000);
 };
+// 添加清除所有定时器的函数
+const clearTimers = () => {
+  clearIndividualTestTimer();
+  clearOneOnOneTimer();
+  if (countdownTimer) {
+    clearInterval(countdownTimer);
+  }
+};
+
 /** 1v1-输入文字处理 */
 const oneOnOneInputData = (event) => {
-  if (ws && currentModeSelect.value === 'MODE_ONE_ON_ONE_WAIT') {
+  if (WebSocketService.status === 'connected' && currentModeSelect.value === 'MODE_ONE_ON_ONE_WAIT') {
     console.log('1v1-开始')
     currentModeSelect.value = 'MODE_ONE_ON_ONE_ING';
     startOneOnOneIngTimer();
@@ -619,19 +340,22 @@ const startOneOnOneIngTimer = () => {
       clearOneOnOneTimer();
       return;
     }
-    sendMessage(getMsg('PKONEONONE', 'ING', inputContent.value, matchInfo.value.roomId.toString()));
-    clearTimeout(individualTestIngTimer)
+    // 使用TypingWebSocketService发送对战进度
+    TypingWebSocketService.sendBattleProgress(inputContent.value, matchInfo.value.roomId.toString());
+    clearTimeout(individualTestIngTimer);
     startOneOnOneIngTimer();
   }, 3000);
 };
+
 const startOneOnOneCollectTimer = () => {
   individualTestCollectTimer = setTimeout(() => {
     if (currentModeSelect.value !== 'MODE_ONE_ON_ONE_ING') {
       clearOneOnOneTimer();
       return;
     }
-    sendMessage(getMsg('PKONEONONE', 'COLLECT', '', matchInfo.value.roomId.toString()));
-    clearTimeout(individualTestCollectTimer)
+    // 使用TypingWebSocketService请求对战收集
+    TypingWebSocketService.requestBattleCollect(matchInfo.value.roomId.toString());
+    clearTimeout(individualTestCollectTimer);
     startOneOnOneCollectTimer();
   }, 20000);
 };
@@ -673,7 +397,8 @@ const oneOnOneSubmit = () => {
   if (currentModeSelect.value === 'MODE_ONE_ON_ONE_ING') {
     currentModeSelect.value = 'MODE_ONE_ON_ONE_END';
     clearOneOnOneTimer();
-    sendMessage(getMsg('PKONEONONE', 'END', inputContent.value, matchInfo.value.roomId.toString()));
+    // 使用TypingWebSocketService结束对战
+    TypingWebSocketService.endBattle(inputContent.value, matchInfo.value.roomId.toString());
   } else {
     utils.tip("输入文字开始", "warning");
   }
@@ -685,9 +410,8 @@ const handleReady = () => {
     utils.tip("房间信息获取失败", "error");
     return;
   }
-  sendMessage(getMsg('PKONEONONE', 'READY', JSON.stringify({
-    roomId: matchInfo.value.roomId
-  }), matchInfo.value.roomId.toString()));
+  // 使用TypingWebSocketService准备对战
+  TypingWebSocketService.readyForBattle(matchInfo.value.roomId);
 };
 
 </script>

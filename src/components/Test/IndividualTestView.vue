@@ -30,7 +30,7 @@
 </template>
 
 <script setup>
-import { computed, ref, inject, watch } from 'vue';
+import { computed, ref, inject } from 'vue';
 import utils from '@/api/utils/generalUtil';
 
 const props = defineProps({
