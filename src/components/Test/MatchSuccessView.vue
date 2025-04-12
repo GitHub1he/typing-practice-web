@@ -3,25 +3,26 @@
         <div class="match-overlay">
             <div class="match-content">
                 <div class="players-container">
-                    <div class="player-card" :class="{ 'ready': matchInfo?.player1?.ready }">
+                    <div class="player-card" :class="{ 'ready': props.matchInfo?.player1?.ready }">
                         <div class="player-avatar">
-                            <a-avatar :size="100" :src="getAvatarSrc(matchInfo?.player1?.avatar || '1')">
+                            <a-avatar :size="100" :src="getAvatarSrc(props.matchInfo?.player1?.avatar || '1')">
                             </a-avatar>
                         </div>
-                        <div class="player-name">{{ matchInfo?.player1?.nickName || '玩家1' }}</div>
-                        <div class="ready-status">{{ matchInfo?.player1?.ready ? '已准备' : '未准备' }}</div>
+                        <div class="player-name">{{ props.matchInfo?.player1?.nickName || '玩家1' }}</div>
+                        <div class="ready-status">{{ props.matchInfo?.player1?.ready ? '已准备' : '未准备' }}</div>
                     </div>
                     <div class="vs-text">VS</div>
-                    <div class="player-card" :class="{ 'ready': matchInfo?.player2?.ready }">
+                    <div class="player-card" :class="{ 'ready': props.matchInfo?.player2?.ready }">
                         <div class="player-avatar">
-                            <a-avatar :size="100" :src="getAvatarSrc(matchInfo?.player2?.avatar || '1')"></a-avatar>
+                            <a-avatar :size="100"
+                                :src="getAvatarSrc(props.matchInfo?.player2?.avatar || '1')"></a-avatar>
                         </div>
-                        <div class="player-name">{{ matchInfo?.player2?.nickName || '玩家2' }}</div>
-                        <div class="ready-status">{{ matchInfo?.player2?.ready ? '已准备' : '未准备' }}</div>
+                        <div class="player-name">{{ props.matchInfo?.player2?.nickName || '玩家2' }}</div>
+                        <div class="ready-status">{{ props.matchInfo?.player2?.ready ? '已准备' : '未准备' }}</div>
                     </div>
                 </div>
 
-                <template v-if="currentMatchMode === '0'">
+                <template v-if="props.currentMatchMode === '0'">
                     <a-button type="primary" class="ready-btn" :disabled="isReady" @click="handleReady">
                         {{ isReady ? '已准备' : '准备' }}
                     </a-button>
