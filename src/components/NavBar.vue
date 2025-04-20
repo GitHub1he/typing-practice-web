@@ -59,8 +59,13 @@ export default {
     const current = ref(['mail']);
     const store = useStore();
     const loginStatus = computed(() => store.state.user.isLogin);
-    const avatar = store.state.user.user.avatar;
-    const avatarSrc = utils.getAvatarSrc(avatar);
+    
+    // 修改为计算属性，这样当 store 中的 avatar 变化时，avatarSrc 会自动更新
+    const avatarSrc = computed(() => {
+      const avatar = store.state.user.user.avatar;
+      return utils.getAvatarSrc(avatar);
+    });
+    
     return {
       current,
       loginStatus,

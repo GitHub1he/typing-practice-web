@@ -47,6 +47,11 @@
             <a-button @click="routePractice(detail.id, detail.title, detail.language)" type="primary">
               去练习
             </a-button>
+            <!-- 添加编辑文章按钮，仅当当前用户是作者时显示 -->
+            <a-button v-if="isAuthor" @click.stop="updateArticle(detail.id)" type="primary" ghost>
+              <template #icon><edit-outlined /></template>
+              编辑文章
+            </a-button>
             <a-button @click="getNextArticle(detail.id)">下一篇</a-button>
             <a-button>创建比赛</a-button>
           </a-button-group>
@@ -108,6 +113,7 @@
 
     </a-layout>
   </a-space>
+  <UpdataArticle ref="childRef" :updataId="updataId" @refreshArticleList="refreshArticleList" />
 </template>
 
 <script setup>
@@ -120,23 +126,40 @@ import {
   BulbOutlined,
   CalendarOutlined,
   ReadOutlined,
-  TagsOutlined
+  TagsOutlined,
+  EditOutlined // 添加编辑图标
 } from '@ant-design/icons-vue';
 import RankingsList from '../../components/Ranking/RankingsList.vue';
 import ArticleComment from '@/components/Article/ArticleComment.vue';
+import UpdataArticle from '@/components/Article/UpdataArticle.vue';
 import { useRoute } from 'vue-router';
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch, onMounted, computed } from 'vue'; // 添加 computed
 import utils from '../../api/utils/generalUtil';
 import api from '@/api';
 import { useDebounce } from '@/api/utils/debounce';
 import getDict from '../../api/utils/dict';
 import router from '../../router';
+import { useStore } from 'vuex'; // 添加 useStore
 
+const store = useStore(); // 获取 store
 const route = useRoute();
 const detail = ref({});
 const { debounce } = useDebounce();
 let rankList = ref();
+const childRef = ref();
 
+
+// 判断当前用户是否是文章作者
+const isAuthor = computed(() => {
+  return detail.value.authorId === store.state.user.user.userId;
+});
+
+// 编辑文章方法
+const updataId = ref();
+const updateArticle = (id) => {
+  childRef.value.showDrawer();
+  updataId.value = id;
+};
 
 const loadArticle = (articleId) => {
   api.articleApi.desc(articleId).then(res => {
