@@ -70,6 +70,11 @@ class WebSocketService {
               reject(error);
             }
           };
+
+          this.ws.onclose = () => {
+            this.logout();
+            console.log('WebSocket connection closed');
+          }
         })
         .catch(error => {
           console.error('获取WebSocket地址失败:', error);
@@ -144,6 +149,7 @@ class WebSocketService {
   logout() {
     if (this.ws) {
       this.sendMessage(this.getMsg('LOGIN_OUT'));
+      this.ws.onclose = null;
       this.ws.close();
     }
     clearTimeout(this.pingTimer);
