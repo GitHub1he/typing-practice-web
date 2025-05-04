@@ -29,7 +29,12 @@
     @one-on-one-input-data="oneOnOneInputData" @one-on-one-submit="oneOnOneSubmit"
     @is-composing-change="handleIsComposingChange" />
 
-  <!-- 添加对战倒计时组件 -->
+  <!-- 对战信息图表组件 -->
+  <div class="battle-info-container" v-if="currentModeSelect === 'MODE_ONE_ON_ONE_ING'">
+    <BattleInfoChart :other-player-show-map="scoreInfo.otherPlayerShowMap" />
+  </div>
+
+  <!-- 对战倒计时组件 -->
   <div class="common-card" v-if="currentModeSelect === 'MODE_ONE_ON_ONE_WAIT'">
     <div class="countdown-container">
       <div class="countdown-circle">
@@ -46,6 +51,7 @@
 </template>
 
 <script setup>
+import BattleInfoChart from '@/components/Test/BattleInfoChart.vue';
 import WebSocketStatus from '@/components/Common/WebSocketStatus.vue';
 import ModeSelection from '@/components/Test/ModeSelection.vue';
 import MatchingView from '@/components/Test/MatchingView.vue';
@@ -426,7 +432,7 @@ a-card {
 
 
 .common-card {
-  width: 80%;
+  width: 60%;
   margin: 4rem auto 0 auto;
 }
 
@@ -480,5 +486,13 @@ a-card {
   font-size: 1.2rem;
   color: white;
   margin-top: 0.5rem;
+}
+
+/* 添加对战信息图表的容器样式 */
+.battle-info-container {
+  width: 60%;
+  /* 与上方组件保持相同宽度 */
+  margin: 1rem auto;
+  /* 上下间距1rem，左右自动居中 */
 }
 </style>

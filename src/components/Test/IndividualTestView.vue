@@ -122,11 +122,6 @@ const individualSubmit = () => {
 </script>
 
 <style scoped>
-.common-card {
-    width: 80%;
-    margin: 4rem auto 0 auto;
-}
-
 .test-header {
     display: flex;
     justify-content: space-between;

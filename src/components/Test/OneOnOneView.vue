@@ -8,9 +8,10 @@
             </div>
             <div class="showing-data">
                 <label>{{ inputContent.length }}/{{ sourceContent.length }}</label>
-                <label>正确率:{{ Number(scoreInfo.accuracy) * 100 }}% </label>
+                <!-- <label>正确率:{{ Number(scoreInfo.accuracy) * 100 }}% </label>
                 <label>速度:{{ scoreInfo.speed }}字/秒 </label>
-                <label>用时:{{ scoreInfo.actualDuration }}秒 </label>
+                <label>用时:{{ scoreInfo.actualDuration }}秒 </label> -->
+                <!-- <label>其他信息:{{ scoreInfo.otherPlayerShowMap }} </label> -->
                 <label style="color: red;">{{ scoreInfo.tipMsg }} </label>
             </div>
             <div class="option-btn">
@@ -120,11 +121,6 @@ const oneOnOneSubmit = () => {
 </script>
 
 <style scoped>
-.common-card {
-    width: 80%;
-    margin: 4rem auto 0 auto;
-}
-
 .test-header {
     display: flex;
     justify-content: space-between;
