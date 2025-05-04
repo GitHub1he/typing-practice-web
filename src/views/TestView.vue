@@ -46,7 +46,7 @@
 
   <div class="common-card"
     v-if="currentModeSelect === 'MODE_INDIVIDUAL_TEST_END' || currentModeSelect === 'MODE_ONE_ON_ONE_END'">
-    <AfterPracticeView :score-info="scoreInfo" />
+    <AfterPracticeView />
   </div>
 </template>
 
@@ -59,7 +59,7 @@ import MatchSuccessView from '@/components/Test/MatchSuccessView.vue';
 import IndividualTestView from '@/components/Test/IndividualTestView.vue';
 import OneOnOneView from '@/components/Test/OneOnOneView.vue';
 import AfterPracticeView from './Practice/AfterPracticeView.vue';
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, provide } from 'vue';
 import utils from '@/api/utils/generalUtil';
 import WebSocketService from '@/services/WebSocketService';
 import TypingWebSocketService from '@/services/TypingWebSocketService';
