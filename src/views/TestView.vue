@@ -20,13 +20,14 @@
   <IndividualTestView
     v-if="currentModeSelect === 'MODE_INDIVIDUAL_TEST_INIT' || currentModeSelect === 'MODE_INDIVIDUAL_TEST_ING'"
     :source-content="sourceContent" :input-content="inputContent" :current-mode-select="currentModeSelect"
-    @individual-input-data="individualInputData" @individual-submit="individualSubmit"
+    :score-info="scoreInfo" @individual-input-data="individualInputData" @individual-submit="individualSubmit"
     @is-composing-change="handleIsComposingChange" />
 
   <!-- 一对一对战 -->
   <OneOnOneView v-if="currentModeSelect === 'MODE_ONE_ON_ONE_ING'" :source-content="sourceContent"
-    :input-content="inputContent" :current-mode-select="currentModeSelect" @one-on-one-input-data="oneOnOneInputData"
-    @one-on-one-submit="oneOnOneSubmit" @is-composing-change="handleIsComposingChange" />
+    :input-content="inputContent" :current-mode-select="currentModeSelect" :score-info="scoreInfo"
+    @one-on-one-input-data="oneOnOneInputData" @one-on-one-submit="oneOnOneSubmit"
+    @is-composing-change="handleIsComposingChange" />
 
   <!-- 添加对战倒计时组件 -->
   <div class="common-card" v-if="currentModeSelect === 'MODE_ONE_ON_ONE_WAIT'">
@@ -40,7 +41,7 @@
 
   <div class="common-card"
     v-if="currentModeSelect === 'MODE_INDIVIDUAL_TEST_END' || currentModeSelect === 'MODE_ONE_ON_ONE_END'">
-    <AfterPracticeView />
+    <AfterPracticeView :score-info="scoreInfo" />
   </div>
 </template>
 
@@ -52,7 +53,7 @@ import MatchSuccessView from '@/components/Test/MatchSuccessView.vue';
 import IndividualTestView from '@/components/Test/IndividualTestView.vue';
 import OneOnOneView from '@/components/Test/OneOnOneView.vue';
 import AfterPracticeView from './Practice/AfterPracticeView.vue';
-import { onMounted, ref, provide } from 'vue';
+import { onMounted, ref } from 'vue';
 import utils from '@/api/utils/generalUtil';
 import WebSocketService from '@/services/WebSocketService';
 import TypingWebSocketService from '@/services/TypingWebSocketService';
@@ -64,7 +65,7 @@ const sourceContent = ref('');
 const inputContent = ref('');
 const sequence = ref(0); // 个人测试接收消息次序
 const individualAppendIndex = ref(0); // 个人测试追加文章数据
-const bufferData = ref({ individualAppendData: "", accuracy: "", speed: "", actualDuration: "" }); // 个人测试追加文章数据
+const bufferData = ref({ individualAppendData: "", accuracy: "", speed: "", actualDuration: "", otherPlayerShowMap: "" }); // 个人测试追加文章数据
 const typingInterval = 100; // 设置打字机字符显示间隔（毫秒）
 const isComposing = ref(false); // 当前是否中文输入状态
 const currentModeSelect = ref('MODE_CHANGE_MODE'); // 当前模式
@@ -74,9 +75,6 @@ let countdownTimer = null; // 倒计时定时器
 let individualTestIngTimer = null;
 let individualTestCollectTimer = null;
 let individualTestAppendTimer = null;
-
-// 提供给子组件的数据
-provide('scoreInfo', scoreInfo);
 
 // 初始化WebSocket服务
 onMounted(() => {
@@ -96,6 +94,10 @@ const setupWebSocketCallbacks = () => {
       bufferData.value.speed = data.speed;
       bufferData.value.accuracy = data.accuracy;
       bufferData.value.actualDuration = data.actualDuration;
+      if (data.otherPlayerShowMap) {
+        bufferData.value.otherPlayerShowMap = JSON.parse(data.otherPlayerShowMap);
+        console.log('bufferData.value.otherPlayerShowMap', bufferData.value.otherPlayerShowMap);
+      }
 
       if (Number(sequence.value) + 1 === Number(data.sequence)) {
         sequence.value = Number(data.sequence);
@@ -152,7 +154,7 @@ const setupWebSocketCallbacks = () => {
       startCountdown();
     },
     onTipMessage: (msg) => {
-      if (currentModeSelect.value === 'MODE_INDIVIDUAL_TEST_ING') {
+      if (currentModeSelect.value === 'MODE_INDIVIDUAL_TEST_ING' || currentModeSelect.value === 'MODE_ONE_ON_ONE_ING') {
         scoreInfo.value.tipMsg = msg;
       } else {
         utils.tip(msg, "warning");
@@ -376,6 +378,7 @@ const startOneOnOneAppendTimer = () => {
       scoreInfo.value.speed = bufferData.value.speed;
       scoreInfo.value.accuracy = bufferData.value.accuracy;
       scoreInfo.value.actualDuration = bufferData.value.actualDuration;
+      scoreInfo.value.otherPlayerShowMap = bufferData.value.otherPlayerShowMap;
       // 添加对textarea是否存在的检查
       if (textarea) {
         textarea.scrollTop = textarea.scrollHeight;

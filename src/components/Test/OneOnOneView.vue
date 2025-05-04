@@ -30,7 +30,7 @@
 </template>
 
 <script setup>
-import { computed, ref, inject } from 'vue';
+import { computed, ref } from 'vue';
 import utils from '@/api/utils/generalUtil';
 
 const props = defineProps({
@@ -45,6 +45,10 @@ const props = defineProps({
     currentModeSelect: {
         type: String,
         required: true
+    },
+    scoreInfo: {
+        type: Object,
+        required: true
     }
 });
 
@@ -56,7 +60,6 @@ const emit = defineEmits([
     'isComposingChange'
 ]);
 
-const scoreInfo = inject('scoreInfo');
 const fontSize = ref(16);
 const isSideBySide = ref(false);
 const isComposing = ref(false);

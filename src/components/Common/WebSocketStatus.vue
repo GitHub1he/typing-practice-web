@@ -25,9 +25,9 @@
       </a-tag>
     </a-tooltip>
 
-    <a-modal v-model:open="showReconnectModal" title="是否确认登录" :confirm-loading="confirmLoading" 
+    <a-modal v-model:open="showReconnectModal" title="重新登录确认" :confirm-loading="confirmLoading"
       @ok="handleConfirmReConnect" @cancel="cancelConfirmReConnect">
-      <p>{{ modalText }}</p>
+      <p>检测到您在其他地方登录，是否在此处重新登录？</p>
     </a-modal>
   </div>
 </template>
@@ -53,7 +53,7 @@ onMounted(() => {
       showReconnectModal.value = true;
     }
   });
-  
+
   TypingWebSocketService.init();
 });
 
@@ -78,20 +78,22 @@ const logout = () => {
 
 // 确认重连
 const handleConfirmReConnect = () => {
-  modalText.value = '正在连接...';
+  modalText.value = '正在重新连接...';
   confirmLoading.value = true;
-  
+
   WebSocketService.confirmReconnect();
-  
-  showReconnectModal.value = false;
-  confirmLoading.value = false;
+
+  setTimeout(() => {
+    showReconnectModal.value = false;
+    confirmLoading.value = false;
+  }, 1000);
 };
 
 // 取消重连
 const cancelConfirmReConnect = () => {
-  WebSocketService.logout();
   showReconnectModal.value = false;
   confirmLoading.value = false;
+  WebSocketService.logout();
 };
 </script>
 

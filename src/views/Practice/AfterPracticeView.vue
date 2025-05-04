@@ -1,11 +1,11 @@
 <template>
   <a-card title="成绩详情" :headStyle="{ textAlign: 'center' }">
     <a-row>
-      <a-col :span="12" @click="routeUserInfo(scoreInfo.userId)" style="cursor: pointer;">
-        用户：{{ scoreInfo.nickName }}
+      <a-col :span="12" @click="routeUserInfo(props.scoreInfo.userId)" style="cursor: pointer;">
+        用户：{{ props.scoreInfo.nickName }}
       </a-col>
       <a-col :span="12">
-        模式：{{ scoreInfo.mode }}
+        模式：{{ props.scoreInfo.mode }}
       </a-col>
     </a-row>
     <a-row>
@@ -52,14 +52,22 @@
 </template>
 
 <script setup>
-import { ref, inject, computed } from 'vue';
+import { ref, computed } from 'vue';
 import ECharts from '@/components/ECharts.vue';
 import router from '@/router';
-const scoreInfo = ref(inject('scoreInfo'));
+
+// 将 inject 改为 props
+const props = defineProps({
+  scoreInfo: {
+    type: Object,
+    required: true
+  }
+});
+
 const chartData1 = computed(() => {
   return {
-    xAxisData: scoreInfo.value.axisXData ? JSON.parse(scoreInfo.value.axisXData) : [],
-    seriesData: scoreInfo.value.axisYData ? JSON.parse(scoreInfo.value.axisYData) : [],
+    xAxisData: props.scoreInfo.axisXData ? JSON.parse(props.scoreInfo.axisXData) : [],
+    seriesData: props.scoreInfo.axisYData ? JSON.parse(props.scoreInfo.axisYData) : [],
   };
 });
 
@@ -72,6 +80,7 @@ const routeUserInfo = (id) => {
     }
   });
 };
+
 const routeArticleDetailInfo = (params) => {
   router.push({
     name: 'detail',

@@ -36,7 +36,7 @@ onBeforeUnmount(() => {
 const startTimer = () => {
     matchingTime.value = 0;
     startTime = Date.now();
-    
+
     timerInterval = setInterval(() => {
         // 计算实际经过的秒数，而不是简单地递增
         matchingTime.value = Math.floor((Date.now() - startTime) / 1000);
@@ -66,7 +66,6 @@ const cancelMatching = () => {
     align-items: center;
     justify-content: center;
     height: 70vh;
-    background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
     border-radius: 1rem;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 }
@@ -90,10 +89,12 @@ const cancelMatching = () => {
         transform: translateY(0px);
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
     }
+
     50% {
         transform: translateY(-10px);
         box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
     }
+
     100% {
         transform: translateY(0px);
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
@@ -114,10 +115,12 @@ const cancelMatching = () => {
         transform: scale(0.95);
         opacity: 0.7;
     }
+
     50% {
         transform: scale(1.05);
         opacity: 0.3;
     }
+
     100% {
         transform: scale(0.95);
         opacity: 0.7;
@@ -174,10 +177,12 @@ const cancelMatching = () => {
         transform: scale(1);
         opacity: 0.7;
     }
+
     50% {
         transform: scale(1.2);
         opacity: 1;
     }
+
     100% {
         transform: scale(1);
         opacity: 0.7;
@@ -188,6 +193,7 @@ const cancelMatching = () => {
     from {
         transform: rotate(0deg);
     }
+
     to {
         transform: rotate(360deg);
     }
@@ -204,9 +210,11 @@ const cancelMatching = () => {
     0% {
         text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
     }
+
     50% {
         text-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
     }
+
     100% {
         text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
     }
@@ -232,11 +240,28 @@ const cancelMatching = () => {
 }
 
 @keyframes dot-animation {
-    0% { opacity: 0; }
-    25% { opacity: 0.3; content: '.'; }
-    50% { opacity: 0.6; content: '..'; }
-    75% { opacity: 1; content: '...'; }
-    100% { opacity: 0; }
+    0% {
+        opacity: 0;
+    }
+
+    25% {
+        opacity: 0.3;
+        content: '.';
+    }
+
+    50% {
+        opacity: 0.6;
+        content: '..';
+    }
+
+    75% {
+        opacity: 1;
+        content: '...';
+    }
+
+    100% {
+        opacity: 0;
+    }
 }
 
 .cancel-match-btn {

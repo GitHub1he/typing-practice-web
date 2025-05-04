@@ -20,11 +20,7 @@ class TypingWebSocketService {
   init() {
     WebSocketService.setCallbacks({
       onMessage: (res) => this.handleMessage(res),
-      onReconnect: (confirmCode) => {
-        if (this.callbacks.onReconnect) {
-          this.callbacks.onReconnect(confirmCode);
-        }
-      },
+
       onDisconnect: () => {
         // 处理断连后的模式重置
         if (this.callbacks.onModeChange) {

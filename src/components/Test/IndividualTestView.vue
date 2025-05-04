@@ -45,6 +45,10 @@ const props = defineProps({
     currentModeSelect: {
         type: String,
         required: true
+    },
+    scoreInfo: {  // 添加 scoreInfo prop
+        type: Object,
+        required: true
     }
 });
 
@@ -56,7 +60,6 @@ const emit = defineEmits([
     'isComposingChange'
 ]);
 
-const scoreInfo = inject('scoreInfo');
 const fontSize = ref(16);
 const isSideBySide = ref(false);
 const isComposing = ref(false);
