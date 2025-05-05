@@ -127,19 +127,35 @@ const updateChartData = (players) => {
 
     // 更新每个玩家的历史数据
     players.forEach(player => {
-        const axisData = JSON.parse(player.axis);
-        const nickname = axisData.nickname;
+        const nickname = player.nickName; // 直接获取昵称
 
         if (!speedData.value.playerHistory.has(nickname)) {
             speedData.value.playerHistory.set(nickname, []);
         }
 
         const playerData = speedData.value.playerHistory.get(nickname);
-        // 添加新的数据点
-        playerData.push([Number(axisData.time), Number(axisData.speed)]);
 
-        // 保持数据点按时间排序
-        playerData.sort((a, b) => a[0] - b[0]);
+        // 使用 actualDuration 和 speed 作为新的数据点
+        // 确保它们是数字类型
+        const time = Number(player.actualDuration);
+        const avgSpeed = Number(player.speed);
+
+        // 检查数据是否有效 (例如，时间大于0，速度是有效数字)
+        // 只有当时间大于0时才添加点，避免初始 (0, 0) 点可能带来的问题
+        if (!isNaN(time) && time > 0 && !isNaN(avgSpeed)) {
+            // 添加新的数据点 [总用时, 平均速度]
+            playerData.push([time, avgSpeed]);
+
+            // 保持数据点按时间排序
+            playerData.sort((a, b) => a[0] - b[0]);
+
+            // 注意：这里没有去重逻辑。如果同一时间点 (actualDuration) 可能有多个 speed 更新，
+            // 它们都会被添加到图表中。如果需要只保留最新的，可以在排序后添加去重逻辑。
+
+        } else {
+            // 可以选择性地记录无效数据
+            // console.warn(`Invalid data for player ${nickname}: time=${player.actualDuration}, speed=${player.speed}`);
+        }
     });
 
     // 生成图表数据
@@ -147,7 +163,7 @@ const updateChartData = (players) => {
         name: nickname,
         type: 'line',
         smooth: true,
-        showSymbol: false,
+        showSymbol: false, // 可以设为 true 来观察数据点
         data: data,
         emphasis: {
             focus: 'series'

@@ -81,6 +81,7 @@ let countdownTimer = null; // 倒计时定时器
 let individualTestIngTimer = null;
 let individualTestCollectTimer = null;
 let individualTestAppendTimer = null;
+provide('scoreInfo', scoreInfo);
 
 // 初始化WebSocket服务
 onMounted(() => {
@@ -433,8 +434,31 @@ a-card {
 
 .common-card {
   width: 60%;
+  /* 默认宽度 */
   margin: 4rem auto 0 auto;
 }
+
+/* 当屏幕宽度小于 992px 时 */
+@media (max-width: 991.98px) {
+  .common-card {
+    width: 80%;
+    /* 调整宽度为 80% */
+  }
+}
+
+/* 当屏幕宽度小于 768px 时 */
+@media (max-width: 767.98px) {
+  .common-card {
+    width: 100%;
+    /* 调整宽度为 100% */
+    margin-top: 2rem;
+    /* 在非常窄的屏幕上可以适当减小上边距 */
+    /* 可以考虑移除左右 auto边距，如果需要完全贴边 */
+    /* margin-left: 0; */
+    /* margin-right: 0; */
+  }
+}
+
 
 /* 去除全局滚动条 */
 :root {
@@ -491,8 +515,20 @@ a-card {
 /* 添加对战信息图表的容器样式 */
 .battle-info-container {
   width: 60%;
-  /* 与上方组件保持相同宽度 */
+  /* 默认宽度，与 common-card 保持一致 */
   margin: 1rem auto;
-  /* 上下间距1rem，左右自动居中 */
+}
+
+/* 响应式调整 battle-info-container 的宽度 */
+@media (max-width: 991.98px) {
+  .battle-info-container {
+    width: 80%;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .battle-info-container {
+    width: 100%;
+  }
 }
 </style>

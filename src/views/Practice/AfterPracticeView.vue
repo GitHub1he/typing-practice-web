@@ -56,7 +56,7 @@ import { ref, computed, inject } from 'vue';
 import ECharts from '@/components/ECharts.vue';
 import router from '@/router';
 
-const scoreInfo = inject('scoreInfo');
+const scoreInfo = ref(inject('scoreInfo'));
 
 const chartData1 = computed(() => {
   return {
