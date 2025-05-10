@@ -24,14 +24,16 @@
     @is-composing-change="handleIsComposingChange" />
 
   <!-- 一对一对战 -->
-  <OneOnOneView v-if="currentModeSelect === 'MODE_ONE_ON_ONE_ING'" :source-content="sourceContent"
-    :input-content="inputContent" :current-mode-select="currentModeSelect" :score-info="scoreInfo"
-    @one-on-one-input-data="oneOnOneInputData" @one-on-one-submit="oneOnOneSubmit"
-    @is-composing-change="handleIsComposingChange" />
-
-  <!-- 对战信息图表组件 -->
-  <div class="battle-info-container" v-if="currentModeSelect === 'MODE_ONE_ON_ONE_ING'">
-    <BattleInfoChart :other-player-show-map="scoreInfo.otherPlayerShowMap" />
+  <div class="battle-container" v-if="currentModeSelect === 'MODE_ONE_ON_ONE_ING'">
+    <div class="battle-main">
+      <OneOnOneView :source-content="sourceContent" :input-content="inputContent"
+        :current-mode-select="currentModeSelect" :score-info="scoreInfo" @one-on-one-input-data="oneOnOneInputData"
+        @one-on-one-submit="oneOnOneSubmit" @is-composing-change="handleIsComposingChange" />
+    </div>
+    <!-- 对战图表信息 -->
+    <div class="battle-sidebar">
+      <BattleInfoChart :other-player-show-map="scoreInfo.otherPlayerShowMap" />
+    </div>
   </div>
 
   <!-- 对战倒计时组件 -->
@@ -74,7 +76,7 @@ const individualAppendIndex = ref(0); // 个人测试追加文章数据
 const bufferData = ref({ individualAppendData: "", accuracy: "", speed: "", actualDuration: "", otherPlayerShowMap: "" }); // 个人测试追加文章数据
 const typingInterval = 100; // 设置打字机字符显示间隔（毫秒）
 const isComposing = ref(false); // 当前是否中文输入状态
-const currentModeSelect = ref('MODE_CHANGE_MODE'); // 当前模式
+const currentModeSelect = ref('MODE_ONE_ON_ONE_ING'); // 当前模式
 const scoreInfo = ref({});
 const countdownTime = ref(3); // 倒计时初始值
 let countdownTimer = null; // 倒计时定时器
@@ -435,7 +437,7 @@ a-card {
 .common-card {
   width: 60%;
   /* 默认宽度 */
-  margin: 4rem auto 0 auto;
+  margin: 0 auto 0 auto;
 }
 
 /* 当屏幕宽度小于 992px 时 */
@@ -449,9 +451,9 @@ a-card {
 /* 当屏幕宽度小于 768px 时 */
 @media (max-width: 767.98px) {
   .common-card {
-    width: 100%;
+    width: 95%;
     /* 调整宽度为 100% */
-    margin-top: 2rem;
+    margin-top: 1rem;
     /* 在非常窄的屏幕上可以适当减小上边距 */
     /* 可以考虑移除左右 auto边距，如果需要完全贴边 */
     /* margin-left: 0; */
@@ -528,6 +530,41 @@ a-card {
 
 @media (max-width: 767.98px) {
   .battle-info-container {
+    width: 100%;
+  }
+}
+
+/* 对战布局容器 */
+.battle-container {
+  width: 90%;
+  margin: 2rem auto;
+  display: flex;
+  justify-content: center;
+  /* 水平居中 */
+  align-items: flex-start;
+  /* 顶部对齐 */
+  gap: 1rem;
+}
+
+/* 对战主区域 */
+.battle-main {
+  min-width: 50%;
+}
+
+/* 对战侧边栏 */
+.battle-sidebar {
+  min-width: 25%;
+}
+
+/* 在小屏幕上调整布局 */
+@media (max-width: 991.98px) {
+  .battle-container {
+    width: 95%;
+    flex-direction: column;
+  }
+
+  .battle-main,
+  .battle-sidebar {
     width: 100%;
   }
 }

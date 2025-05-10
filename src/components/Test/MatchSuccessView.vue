@@ -68,12 +68,13 @@ const getAvatarSrc = (avatar) => {
 <style scoped>
 .match-success-container {
     width: 100%;
-    height: 100vh;
+    height: 80vh;
     display: flex;
     justify-content: center;
     align-items: center;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     overflow: hidden;
+    border-radius: 1.5rem;
 }
 
 .match-overlay {

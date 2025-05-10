@@ -1,6 +1,5 @@
 <template>
-    <div class="common-card" @paste.capture.prevent=false @copy.capture.prevent=false @keydown="handleKeydown"
-        tabindex="0">
+    <div @paste.capture.prevent=false @copy.capture.prevent=false @keydown="handleKeydown" tabindex="0">
         <div class="test-header">
             <div class="font-change">
                 <a-button type="dashed" @click="increaseFontSize">+</a-button>

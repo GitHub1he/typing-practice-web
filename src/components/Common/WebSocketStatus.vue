@@ -100,5 +100,6 @@ const cancelConfirmReConnect = () => {
 <style scoped>
 .ws-status {
   float: right;
+  display: contents;
 }
 </style>
