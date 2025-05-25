@@ -235,14 +235,32 @@ class WebSocketService {
     return this.encodeMessage(reqMsg);
   }
 
+  // 新增：varint32长度编码函数
+  encodeVarint32(n) {
+    const bytes = [];
+    while (n > 0x7F) {
+      bytes.push((n & 0x7F) | 0x80);
+      n = n >>> 7;
+    }
+    bytes.push(n);
+    return new Uint8Array(bytes);
+  }
   // 编码函数,使用请求报文编码
   encodeMessage(msgObj) {
     const errMsg = this.reqType.verify(msgObj);
     if (errMsg) throw Error(errMsg);
 
+    // 1.生成Protobuf二进制
     const message = this.reqType.create(msgObj);
-    const buffer = this.reqType.encode(message).finish();
-    return buffer;
+    const protoBuffer = this.reqType.encode(message).finish();
+
+    // 2.添加varint32长度前缀
+    const lenPrefix = this.encodeVarint32(protoBuffer.length);
+    const combinedBuffer = new Uint8Array(lenPrefix.length + protoBuffer.length);
+    combinedBuffer.set(lenPrefix, 0);
+    combinedBuffer.set(protoBuffer, lenPrefix.length);
+
+    return combinedBuffer; // 返回带长度前缀的二进制
   }
 
   // 解码消息
