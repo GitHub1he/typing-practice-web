@@ -145,7 +145,6 @@ const submit = () => {
 const typing = (val1, val2) => {
   speedTpying.value = val1;
   timeSpeedArray.value = val2;
-  console.log(speedTpying.value, timeSpeedArray.value);
 };
 const onFinish = (val1, val2) => {
   if (val1 || val2) {
