@@ -1,19 +1,34 @@
 <template>
-  <div :style="randomPosition" class="shici">
-    <img src="https://v1.jinrishici.com/all.svg">
-  </div>
+  <div class="home-container">
+    <div :style="randomPosition" class="shici">
+      <img src="https://v1.jinrishici.com/all.svg">
+    </div>
 
+    <div class="toolbox-toggle">
+      <a-button type="primary" @click="toggleToolbox">
+        {{ showToolbox ? '隐藏工具箱' : '显示工具箱' }}
+      </a-button>
+    </div>
+
+    <div v-if="showToolbox" class="toolbox-wrapper">
+      <ToolboxComponent />
+    </div>
+  </div>
 </template>
 
 <script setup>
-
-
 import { proxyAxios } from '../api/utils/httpUtil';
 import { ref, onMounted, onBeforeUnmount } from 'vue';
+import ToolboxComponent from '../components/Toolbox/ToolboxComponent.vue';
 
 const data = ref();
 const url = ref();
 const randomPosition = ref();
+const showToolbox = ref(false);
+
+const toggleToolbox = () => {
+  showToolbox.value = !showToolbox.value;
+};
 
 
 const fetchImage = () => {
@@ -72,6 +87,11 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.home-container {
+  position: relative;
+  min-height: calc(100vh - 7rem);
+}
+
 .shici {
   display: inline-block;
   background-color: rgba(255, 255, 255, 0.7);
@@ -80,5 +100,25 @@ onBeforeUnmount(() => {
   /* 圆角效果 */
   overflow: hidden;
   /* 确保图片不会溢出圆角区域 */
+}
+
+.toolbox-toggle {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 100;
+}
+
+.toolbox-wrapper {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 99;
+  width: 90%;
+  max-width: 800px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 </style>
