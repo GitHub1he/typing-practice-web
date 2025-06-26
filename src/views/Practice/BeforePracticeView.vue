@@ -60,11 +60,11 @@ import utils from '../../api/utils/generalUtil';
 import getDict from '../../api/utils/dict';
 
 
-const inputValue = ref(1);
-const value = ref('模式一');
+const inputValue = ref(2);
+const value = ref('模式二');
 const checked = ref(false);
 const addonAfterText = 'min';
-const tip = ref('模式一为行行对照');
+const tip = ref('模式二为自由排版且标出错误');
 const currentOption = ref(1);
 const emit = defineEmits(['beforePracticeInfo']);
 
