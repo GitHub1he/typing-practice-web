@@ -199,7 +199,6 @@ const routePractice = (id, title, language) => {
 };
 
 const routeUserInfo = (id) => {
-  console.log(id);
   router.push({
     name: "user",
     query: {

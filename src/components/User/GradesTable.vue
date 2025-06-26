@@ -14,14 +14,9 @@
         </a-select>
       </div>
     </div>
-    
-    <a-table 
-      class="grades-table" 
-      :dataSource="dataSource" 
-      :columns="columns" 
-      :pagination="pagination"
-      :row-class-name="(_record, index) => (index % 2 === 1 ? 'table-striped' : null)" 
-      :loading="loading"
+
+    <a-table class="grades-table" :dataSource="dataSource" :columns="columns" :pagination="pagination"
+      :row-class-name="(_record, index) => (index % 2 === 1 ? 'table-striped' : null)" :loading="loading"
       v-if="!status">
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'res'">
@@ -31,7 +26,7 @@
           <span class="speed-value">{{ record.speed }}</span>
         </template>
         <template v-if="column.key === 'action'">
-          <a-button type="link" @click="viewDetails(record.exerciseId)">
+          <a-button type="link" @click="viewDetails(record.exerciseId, record.roomId)">
             <template #icon><eye-outlined /></template>
             查看详情
           </a-button>
@@ -41,12 +36,13 @@
         <a-empty description="暂无成绩记录" />
       </template>
     </a-table>
-    
+
     <div v-else class="detail-view">
       <div class="header" @click="back">
         <ArrowLeftOutlined />&nbsp; 返回成绩列表
       </div>
-      <AfterPracticeView />
+      <AfterPracticeView v-if="currentDetailType === 'practice'" />
+      <BattleDetailView v-else-if="currentDetailType === 'battle'" />
     </div>
   </div>
 </template>
@@ -56,12 +52,15 @@ import { ref, defineProps, watch, defineEmits, onMounted, provide } from 'vue';
 import utils from '../../api/utils/generalUtil';
 import api from '../../api';
 import AfterPracticeView from '../../views/Practice/AfterPracticeView.vue';
+import BattleDetailView from '../../views/Practice/BattleDetailView.vue';
 import { ArrowLeftOutlined, EyeOutlined } from '@ant-design/icons-vue';
 
 const props = defineProps(['listData', 'currentScene']);
 const dataSource = ref(props.listData);
 const scoreInfo = ref();
+const battleInfo = ref();
 const status = ref(false);
+const currentDetailType = ref('practice'); // 新增：当前详情类型
 const selectedScene = ref(props.currentScene || "0");
 const loading = ref(false);
 
@@ -161,17 +160,38 @@ onMounted(() => {
   ziChuanFu();
 });
 
-const viewDetails = (id) => {
-  api.practiceApi.scoreGetInfo(id).then(res => {
-    if (res.data.success) {
-      scoreInfo.value = res.data.data;
-      status.value = true;
-    } else {
-      utils.tip("成绩有误", "error");
-    }
-  });
+const viewDetails = (exerciseId, roomId) => {
+  console.log(selectedScene.value)
+  // 根据当前场景类型决定调用哪个API
+  if (selectedScene.value === "1") { // 对战场景
+    // 获取房间ID
+    api.practiceApi.scoreGetRoomInfo(roomId).then(res => {
+      if (res.data.success) {
+        battleInfo.value = res.data;
+        currentDetailType.value = 'battle';
+        status.value = true;
+      } else {
+        utils.tip("获取对战详情失败", "error");
+      }
+    }).catch(err => {
+      console.error("获取对战详情出错:", err);
+      utils.tip("获取对战详情出错", "error");
+    });
+  } else { // 练习或挑战场景
+    api.practiceApi.scoreGetInfo(exerciseId).then(res => {
+      if (res.data.success) {
+        scoreInfo.value = res.data.data;
+        currentDetailType.value = 'practice';
+        status.value = true;
+      } else {
+        utils.tip("成绩有误", "error");
+      }
+    });
+  }
 };
+
 provide('scoreInfo', scoreInfo);
+provide('battleInfo', battleInfo); // 新增：提供对战信息
 
 const back = () => {
   status.value = false;

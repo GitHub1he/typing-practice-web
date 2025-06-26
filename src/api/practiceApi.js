@@ -27,6 +27,10 @@ const practiceApi = {
   scoreGetInfo(practiceId) {
     return axios.get(`/score/getInfo/${practiceId}`);
   },
+  //查看房间成绩详情
+  scoreGetRoomInfo(roomId) {
+    return axios.get(`/score/getRoomInfo/${roomId}`);
+  },
   //查看成绩列表
   query(params) {
     return axios.post(`/score/query`, params);
