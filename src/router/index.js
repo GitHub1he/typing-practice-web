@@ -4,7 +4,7 @@ import utils from '@/api/utils/generalUtil';
 
 const routes = [
   {
-    path: '/',
+    path: '/home',
     name: 'home',
     component: () => import('../views/HomeView.vue')
   },
@@ -80,7 +80,7 @@ const router = createRouter({
 
 // 在路由导航前触发获取字典数据的操作
 router.beforeEach((to, from, next) => {
-  if (['/login', '/loginByGithub'].includes(to.path)) return next();
+  if (['/home', '/login', '/loginByGithub'].includes(to.path)) return next();
   if (store.state.user.isLogin) {
     return next();
   } else {

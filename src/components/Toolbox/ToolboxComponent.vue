@@ -110,6 +110,47 @@
                         </div>
                     </div>
                 </a-tab-pane>
+
+                <!-- 分库分表计算工具 -->
+                <a-tab-pane key="4" tab="分库分表计算">
+                    <div class="tool-section">
+                        <h3>分库分表计算</h3>
+                        <p>计算分库分表索引,用于确定数据存储位置</p>
+
+                        <div class="config-section">
+                            <h4>配置参数</h4>
+                            <div class="config-item">
+                                <span>分库数量:</span>
+                                <a-input-number v-model:value="datasourceCount" :min="1" :max="100" placeholder="分库数量"
+                                    style="width: 150px" title="分库数量表示将数据分散存储的数据库实例数量" />
+                            </div>
+                            <div class="config-item">
+                                <span>分表数量:</span>
+                                <a-input-number v-model:value="tableCount" :min="1" :max="1000" placeholder="分表数量"
+                                    style="width: 150px" title="分表数量表示每个数据库实例中的表数量" />
+                            </div>
+                        </div>
+                        <div class="input-section">
+                            <h4>分片键</h4>
+                            <a-input v-model:value="shardingKey" placeholder="请输入分片键（长整数格式,如:1700000309884）"
+                                @change="calculateSharding"
+                                title="分片键将通过以下算法计算得到分库分表位置:1. 使用Java hashCode算法计算分片键的哈希值 2. 分库序号 = (哈希值 % (分库数 × 分表数)) ÷ 分表数 3. 分表序号 = 哈希值 % 分表数" />
+                        </div>
+                        <div v-if="shardingResult" class="result-container">
+                            <a-alert type="success" message="计算结果" />
+                            <div class="result-item">
+                                <span>分库序号:</span>
+                                <span class="result-value">{{ shardingResult.datasourceIndex }}</span>
+                            </div>
+                            <div class="result-item">
+                                <span>分表序号:</span>
+                                <span class="result-value">{{ shardingResult.tableIndex }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </a-tab-pane>
+
+
             </a-tabs>
         </a-card>
     </div>
@@ -404,6 +445,56 @@ const splitStringToGroups = (originalString, size) => {
 
     return groups;
 };
+
+// 分库分表计算相关
+const datasourceCount = ref(8); // 默认分库数量
+const tableCount = ref(64); // 默认分表数量
+const shardingKey = ref('');
+const shardingResult = ref(null);
+// 计算分库分表索引
+const calculateSharding = () => {
+    try {
+        if (!shardingKey.value) {
+            message.error('请输入分片键');
+            return;
+        }
+        // 将输入值转换为BigInt
+        const shardingKeyBigInt = BigInt(shardingKey.value);
+        // 计算分库分表索引
+        const datasourceIndex = getShardingDatasourceIndex(shardingKeyBigInt);
+        const tableIndex = getShardingTableIndex(shardingKeyBigInt);
+        shardingResult.value = {
+            datasourceIndex,
+            tableIndex
+        };
+    } catch (error) {
+        console.error('分库分表计算失败:', error);
+        message.error('计算失败,请检查输入的分片键格式是否正确');
+    }
+};
+// 计算Java的hashCode
+const hashCode = (value) => {
+    // 将BigInt转换为32位整数的数组
+    const lower = Number(value & BigInt(0xFFFFFFFF));
+    const higher = Number(value >> BigInt(32));
+    // 进行异或操作
+    const xorResult = lower ^ higher;
+    // 将结果转换为32位整数
+    return xorResult;
+};
+// 计算分片值的哈希值
+const hashShardingValue = (shardingValue) => {
+    return Math.abs(hashCode(shardingValue));
+};
+// 获取分库序号
+const getShardingDatasourceIndex = (shardingKey) => {
+    return Math.floor((hashShardingValue(shardingKey) % (tableCount.value * datasourceCount.value)) /
+        tableCount.value);
+};
+// 获取分表序号
+const getShardingTableIndex = (shardingKey) => {
+    return hashShardingValue(shardingKey) % tableCount.value;
+};
 </script>
 
 <style scoped>
@@ -463,5 +554,35 @@ const splitStringToGroups = (originalString, size) => {
     color: #666;
     margin-bottom: 8px;
     font-style: italic;
+}
+
+.config-section {
+    margin-bottom: 20px;
+}
+
+.config-item {
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+}
+
+.config-item span {
+    width: 100px;
+    color: #666;
+}
+
+.input-section {
+    margin-bottom: 20px;
+}
+
+.result-item {
+    margin: 8px 0;
+    font-size: 14px;
+}
+
+.result-value {
+    color: #1890ff;
+    font-weight: bold;
+    margin-left: 8px;
 }
 </style>
