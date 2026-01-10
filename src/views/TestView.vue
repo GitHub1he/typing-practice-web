@@ -8,7 +8,7 @@
 
   <!-- 匹配中 -->
   <div class="common-card" v-if="currentModeSelect === 'MODE_MATCH_ING'">
-    <MatchingView @cancel-matching="cancelMatching" />
+    <MatchingView ref="matchingViewRef" @cancel-matching="cancelMatching" @expand-range="handleExpandRange" :match-language="currentMatchLanguage" />
   </div>
 
   <!-- 匹配成功 -->
@@ -62,6 +62,7 @@ import IndividualTestView from '@/components/Test/IndividualTestView.vue';
 import OneOnOneView from '@/components/Test/OneOnOneView.vue';
 import AfterPracticeView from './Practice/AfterPracticeView.vue';
 import { onMounted, ref, provide } from 'vue';
+import { Modal } from 'ant-design-vue';
 import utils from '@/api/utils/generalUtil';
 import WebSocketService from '@/services/WebSocketService';
 import TypingWebSocketService from '@/services/TypingWebSocketService';
@@ -69,6 +70,9 @@ import TypingWebSocketService from '@/services/TypingWebSocketService';
 // 状态变量
 const matchInfo = ref(null); // 存储匹配信息
 const currentMatchMode = ref(''); // 存储当前比赛模式
+const currentMatchLanguage = ref(''); // 存储当前匹配语言
+const matchingViewRef = ref(null); // MatchingView组件引用
+const userChoseToWait = ref(false); // 用户是否选择了继续等待（不再自动提示超时）
 const sourceContent = ref('');
 const inputContent = ref('');
 const sequence = ref(0); // 个人测试接收消息次序
@@ -83,6 +87,7 @@ let countdownTimer = null; // 倒计时定时器
 let individualTestIngTimer = null;
 let individualTestCollectTimer = null;
 let individualTestAppendTimer = null;
+let matchTimeoutTimer = null; // 匹配超时定时器
 provide('scoreInfo', scoreInfo);
 
 // 初始化WebSocket服务
@@ -133,6 +138,12 @@ const setupWebSocketCallbacks = () => {
       WebSocketService.logout();
     },
     onMatchSuccess: (data) => {
+      // 清除超时定时器
+      if (matchTimeoutTimer) {
+        clearTimeout(matchTimeoutTimer);
+        matchTimeoutTimer = null;
+      }
+
       matchInfo.value = {
         roomId: data.roomId,
         player1: {
@@ -169,6 +180,12 @@ const setupWebSocketCallbacks = () => {
         utils.tip(msg, "warning");
       }
     },
+    // 添加匹配状态更新回调（用于更新匹配人数）
+    onMatchingStatusUpdate: (matchingStatus) => {
+      if (matchingViewRef.value && matchingStatus.playerCount !== undefined) {
+        matchingViewRef.value.updatePlayerCount(matchingStatus.playerCount);
+      }
+    },
     // 添加获取当前模式的回调
     getCurrentMode: () => {
       return currentModeSelect.value;
@@ -190,7 +207,8 @@ const StartIndividualTest = async (language) => {
 };
 
 // 开始匹配
-const StartMatch = async (matchMode) => {
+const StartMatch = async (matchConfig) => {
+  // matchConfig: { matchMode: '0', language: '1' | '2' | '3' | '' }
   if (WebSocketService.status !== 'connected') {
     try {
       await WebSocketService.connect();
@@ -200,13 +218,92 @@ const StartMatch = async (matchMode) => {
     }
   }
   currentModeSelect.value = 'MODE_MATCH_ING';
-  currentMatchMode.value = matchMode.toString(); // 保存比赛模式
-  TypingWebSocketService.startMatch(matchMode);
+  currentMatchMode.value = matchConfig.matchMode; // 保存比赛模式
+  currentMatchLanguage.value = matchConfig.language || ''; // 保存选择的语言
+
+  // 启动30秒超时检查
+  startMatchTimeoutCheck();
+
+  TypingWebSocketService.startMatch(matchConfig);
+};
+
+// 启动匹配超时检查
+const startMatchTimeoutCheck = () => {
+  // 如果当前语言已经是随机，则不需要启动超时检查
+  if (currentMatchLanguage.value === '' || currentMatchLanguage.value === null) {
+    console.log('当前语言为随机，不启动超时检查');
+    return;
+  }
+
+  // 如果用户已经选择了继续等待，则不再自动提示
+  if (userChoseToWait.value) {
+    console.log('用户已选择继续等待，不再自动提示超时');
+    return;
+  }
+
+  // 清除可能存在的旧定时器
+  if (matchTimeoutTimer) {
+    clearTimeout(matchTimeoutTimer);
+  }
+
+  // 30秒后触发超时提示
+  matchTimeoutTimer = setTimeout(() => {
+    if (currentModeSelect.value === 'MODE_MATCH_ING') {
+      // 再次检查语言是否为随机（防止用户中途切换到随机）
+      if (currentMatchLanguage.value !== '' && currentMatchLanguage.value !== null) {
+        showExpandMatchModal();
+      }
+    }
+  }, 30000);
+};
+
+// 显示扩大匹配范围的弹窗
+const showExpandMatchModal = () => {
+  Modal.confirm({
+    title: '匹配超时',
+    content: '选择该语言的对手较少，是否扩大到所有语言进行匹配？',
+    okText: '扩大范围',
+    cancelText: '继续等待',
+    onOk: () => {
+      // 用户选择扩大匹配范围
+      TypingWebSocketService.expandMatchRange();
+      // 更新前端状态为随机语言
+      currentMatchLanguage.value = '';
+      // 清除定时器，不再提示（因为已经是随机匹配了）
+      if (matchTimeoutTimer) {
+        clearTimeout(matchTimeoutTimer);
+        matchTimeoutTimer = null;
+      }
+      utils.tip("已扩大到所有语言匹配", "info");
+    },
+    onCancel: () => {
+      // 用户选择继续等待，标记为已选择等待，后续不再自动提示
+      userChoseToWait.value = true;
+      utils.tip("将继续等待当前语言匹配", "info");
+    }
+  });
+};
+
+// 处理扩大匹配范围（从MatchingView手动触发）
+const handleExpandRange = () => {
+  TypingWebSocketService.expandMatchRange();
+  // 更新前端状态为随机语言
+  currentMatchLanguage.value = '';
+  // 清除定时器
+  if (matchTimeoutTimer) {
+    clearTimeout(matchTimeoutTimer);
+    matchTimeoutTimer = null;
+  }
 };
 
 // 取消匹配
 const cancelMatching = () => {
   if (currentModeSelect.value === 'MODE_MATCH_ING') {
+    // 清除超时定时器
+    if (matchTimeoutTimer) {
+      clearTimeout(matchTimeoutTimer);
+      matchTimeoutTimer = null;
+    }
     TypingWebSocketService.cancelMatch();
     currentModeSelect.value = 'MODE_CHANGE_MODE';
   } else {

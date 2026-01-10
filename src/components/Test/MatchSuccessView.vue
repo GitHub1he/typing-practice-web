@@ -2,6 +2,15 @@
     <div class="match-success-container">
         <div class="match-overlay">
             <div class="match-content">
+                <!-- 文章信息显示 -->
+                <div v-if="props.matchInfo?.articleTitle" class="article-info">
+                    <div class="article-title">{{ props.matchInfo.articleTitle }}</div>
+                    <div class="article-language">
+                        <span class="language-icon">{{ getLanguageIcon(props.matchInfo.language) }}</span>
+                        <span class="language-name">{{ getLanguageName(props.matchInfo.language) }}</span>
+                    </div>
+                </div>
+
                 <div class="players-container">
                     <div class="player-card" :class="{ 'ready': props.matchInfo?.player1?.ready }">
                         <div class="player-avatar">
@@ -63,6 +72,28 @@ const handleReady = () => {
 const getAvatarSrc = (avatar) => {
     return utils.getAvatarSrc(avatar);
 };
+
+// 获取语言图标
+const getLanguageIcon = (language) => {
+    const iconMap = {
+        '1': '🇨🇳',  // 中文
+        '2': '🇺🇸',  // English
+        '3': '🇯🇵',  // 日本語
+        '': '🎲'     // 随机
+    };
+    return iconMap[language] || '🎲';
+};
+
+// 获取语言名称
+const getLanguageName = (language) => {
+    const nameMap = {
+        '1': '中文',
+        '2': 'English',
+        '3': '日本語',
+        '': '随机'
+    };
+    return nameMap[language] || '随机';
+};
 </script>
 
 <style scoped>
@@ -75,6 +106,51 @@ const getAvatarSrc = (avatar) => {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     overflow: hidden;
     border-radius: 1.5rem;
+}
+
+/* 文章信息样式 */
+.article-info {
+    text-align: center;
+    color: white;
+    animation: slideDown 0.5s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.article-title {
+    font-size: 1.8rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.article-language {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.8rem;
+    font-size: 1.2rem;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 0.6rem 1.5rem;
+    border-radius: 2rem;
+    backdrop-filter: blur(5px);
+}
+
+.language-icon {
+    font-size: 1.5rem;
+}
+
+.language-name {
+    font-weight: 600;
 }
 
 .match-overlay {

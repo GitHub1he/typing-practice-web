@@ -1,5 +1,6 @@
 <template>
   <div class="mode-select">
+    <!-- 个人练习 -->
     <a-card class="mode-select-item" :hoverable="true" title="个人练习">
       <div v-for="(item, index) in languages" :key="item.itemCode || index">
         <a-card class="language-card" :title="item.itemName" @click="startIndividual(item.itemCode)"
@@ -8,12 +9,73 @@
       <a-card class="language-card" title="随机" @click="startIndividual('')" hoverable></a-card>
     </a-card>
 
-    <a-card class="mode-select-item" :hoverable="true" title="竞赛">
-      <div v-for="(item, index) in matchSelect" :key="item.itemCode || index">
-        <a-card class="language-card" :title="item.itemName" @click="startMatch(item.itemCode)"
-          style="margin-bottom: 5px;" hoverable></a-card>
-      </div>
+    <!-- 竞赛 -->
+    <a-card class="mode-select-item" title="竞赛">
+      <a-card class="language-card battle-card" title="激情1V1" @click="showMatchLanguageModal" hoverable>
+        <div class="card-content">
+          <div class="card-icon">⚔️</div>
+          <div class="card-title">激情1V1</div>
+          <div class="card-desc">选择语言开始对战</div>
+        </div>
+      </a-card>
     </a-card>
+
+    <!-- 语言选择弹窗 -->
+    <a-modal
+      v-model:open="matchLanguageModalVisible"
+      title="选择对战语言"
+      :width="500"
+      :closable="true"
+      :maskClosable="true"
+    >
+      <div class="language-selection">
+        <a-radio-group v-model:value="selectedMatchLanguage" size="large">
+          <a-row :gutter="[16, 16]">
+            <a-col :span="12">
+              <a-radio value="1" class="language-option">
+                <span class="lang-icon">🇨🇳</span>
+                <span class="lang-name">中文</span>
+              </a-radio>
+            </a-col>
+            <a-col :span="12">
+              <a-radio value="2" class="language-option">
+                <span class="lang-icon">🇺🇸</span>
+                <span class="lang-name">English</span>
+              </a-radio>
+            </a-col>
+            <a-col :span="12">
+              <a-radio value="3" class="language-option">
+                <span class="lang-icon">🇯🇵</span>
+                <span class="lang-name">日本語</span>
+              </a-radio>
+            </a-col>
+            <a-col :span="12">
+              <a-radio value="" class="language-option">
+                <span class="lang-icon">🎲</span>
+                <span class="lang-name">随机</span>
+              </a-radio>
+            </a-col>
+          </a-row>
+        </a-radio-group>
+
+        <a-alert
+          message="💡 提示"
+          description="选择相同语言的玩家才会匹配到一起。选择'随机'可以匹配到任何语言的玩家。"
+          type="info"
+          show-icon
+          style="margin-top: 20px;"
+        />
+      </div>
+
+      <template #footer>
+        <a-button @click="matchLanguageModalVisible = false">
+          取消
+        </a-button>
+        <a-button type="primary" @click="confirmStartMatch">
+          开始匹配
+        </a-button>
+      </template>
+    </a-modal>
 
     <a-card class="mode-select-item" title="其他模式">
       <p>暂未开放</p>
@@ -22,17 +84,41 @@
 </template>
 
 <script setup>
+import { ref } from 'vue';
 import { useStore } from 'vuex';
-
+import utils from '@/api/utils/generalUtil';
 
 const store = useStore();
 const languages = store.state.article.articleLanguage;
-const matchSelect = [
-  {
-    "itemCode": '0',
-    "itemName": "激情1V1"
+
+// 新增状态
+const matchLanguageModalVisible = ref(false);
+const selectedMatchLanguage = ref(''); // 默认为空字符串（随机）
+
+// 显示语言选择弹窗
+const showMatchLanguageModal = () => {
+  selectedMatchLanguage.value = ''; // 重置为随机
+  matchLanguageModalVisible.value = true;
+};
+
+// 确认开始匹配
+const confirmStartMatch = () => {
+  const langName = selectedMatchLanguage.value === '' ? '随机' :
+                   selectedMatchLanguage.value === '1' ? '中文' :
+                   selectedMatchLanguage.value === '2' ? 'English' : '日本語';
+
+  if (selectedMatchLanguage.value === '') {
+    utils.tip("随机模式：将匹配任何语言的玩家", "info");
+  } else {
+    utils.tip(`将为您匹配选择【${langName}】的玩家`, "info");
   }
-];
+
+  matchLanguageModalVisible.value = false;
+  emit('start-match', {
+    matchMode: '0',
+    language: selectedMatchLanguage.value
+  });
+};
 
 // 定义emit事件，用于向父组件传递事件
 const emit = defineEmits(['start-individual', 'start-match']);
@@ -42,13 +128,6 @@ const startIndividual = (languageCode) => {
   console.log('选择个人练习模式:', languageCode);
   // 触发事件通知父组件
   emit('start-individual', languageCode);
-};
-
-// 竞赛模式选择处理方法
-const startMatch = (matchCode) => {
-  console.log('选择竞赛模式:', matchCode);
-  // 触发事件通知父组件
-  emit('start-match', matchCode);
 };
 </script>
 
@@ -87,6 +166,69 @@ const startMatch = (matchCode) => {
   background-color: #f0f0f0;
   transform: scale(1.02);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* 对战卡片特殊样式 */
+.battle-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.battle-card :deep(.ant-card-head-title) {
+  color: white !important;
+}
+
+.battle-card :deep(.ant-card-body) {
+  padding: 20px;
+}
+
+.card-content {
+  text-align: center;
+  padding: 10px 0;
+}
+
+.card-icon {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+}
+
+.card-title {
+  font-size: 1.3rem;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.card-desc {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+/* 语言选项样式 */
+.language-option {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border: 2px solid #f0f0f0;
+  border-radius: 8px;
+  transition: all 0.3s;
+  cursor: pointer;
+  height: 60px;
+}
+
+.language-option:hover {
+  border-color: #1890ff;
+  background-color: #f0f8ff;
+  transform: translateY(-2px);
+}
+
+.lang-icon {
+  font-size: 1.8rem;
+  margin-right: 12px;
+}
+
+.lang-name {
+  font-size: 1rem;
+  font-weight: 500;
 }
 
 @media (max-width: 768px) {

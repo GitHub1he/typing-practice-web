@@ -109,6 +109,15 @@ class TypingWebSocketService {
       if (this.callbacks.onModeChange) {
         this.callbacks.onModeChange('MODE_MATCH_ING');
       }
+      // 解析匹配状态数据（包含playerCount）
+      if (res.data && this.callbacks.onMatchingStatusUpdate) {
+        try {
+          const matchingStatus = JSON.parse(res.data);
+          this.callbacks.onMatchingStatusUpdate(matchingStatus);
+        } catch (e) {
+          console.error('解析匹配状态失败:', e);
+        }
+      }
     } else if (res.msg === 'CANCEL_MATCH') {
       utils.tip("取消匹配", "info");
       if (this.callbacks.onModeChange) {
@@ -193,13 +202,28 @@ class TypingWebSocketService {
   }
 
   // 开始匹配
-  startMatch(matchMode) {
-    WebSocketService.sendMessage(WebSocketService.getMsg('MATCH', 'START', JSON.stringify({ "matchMode": `${matchMode}` })));
+  startMatch(matchConfig) {
+    // matchConfig: { matchMode: '0', language: '1' | '2' | '3' | '' }
+    const payload = {
+      matchMode: matchConfig.matchMode,
+      language: matchConfig.language || ''
+    };
+    WebSocketService.sendMessage(WebSocketService.getMsg('MATCH', 'START', JSON.stringify(payload)));
   }
 
   // 取消匹配
   cancelMatch() {
     WebSocketService.sendMessage(WebSocketService.getMsg('MATCH', 'CANCEL'));
+  }
+
+  // 扩大匹配范围
+  expandMatchRange() {
+    WebSocketService.sendMessage(WebSocketService.getMsg('MATCH', 'EXPAND'));
+  }
+
+  // 请求匹配状态更新（用于刷新当前匹配人数）
+  requestMatchingStatus() {
+    WebSocketService.sendMessage(WebSocketService.getMsg('MATCH', 'STATUS'));
   }
 
   // 准备对战
