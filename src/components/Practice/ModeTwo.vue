@@ -10,6 +10,7 @@
     </div>
     <a-textarea v-model:value="value2" placeholder="请输入您的文字" class="custom-textarea"
       :style="{ margin: isSideBySide ? '0px 10px' : '10px 0', fontSize: fontSize + 'px', ...textareaAutoSize }"
+      @keydown="handleKeydown"
       v-if="!inputContent" />
     <div ref="contentContainer" v-html="inputContent" v-else class="update"
       :style="{ margin: isSideBySide ? '0px 10px' : '10px 0', fontSize: fontSize + 'px', ...textareaAutoSize }">
@@ -35,7 +36,7 @@ const accuracy = computed(() => PracticeUtils.calculateAccuracy(articleInfo.valu
 const inputProgress = computed(() => PracticeUtils.calculateInputProgress(articleInfo.value, value2.value));
 const contentContainer = ref(null);
 
-const emit = defineEmits(['updataTimeRangeStatus']);
+const emit = defineEmits(['updataTimeRangeStatus', 'submitExercise']);
 watch(value2, () => {
   if (!isStart.value) {
     isStart.value = true;
@@ -75,6 +76,16 @@ const increaseFontSize = () => {
 const decreaseFontSize = () => {
   if (fontSize.value > 12) {
     fontSize.value -= 2;
+  }
+};
+
+// 处理键盘事件（Ctrl+Enter 提交）
+const handleKeydown = (event) => {
+  // 检测 Ctrl+Enter 或 Cmd+Enter（Mac）
+  if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+    event.preventDefault();
+    // 触发提交事件
+    emit('submitExercise');
   }
 };
 

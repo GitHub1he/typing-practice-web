@@ -12,9 +12,9 @@
       <p>{{ articleInfo.title }}</p>&nbsp;
       <span>字数：{{ articleInfo.wordNums }}</span>
     </div>
-    <ModeThree ref="childComp" v-if="practiceInfo.mode === 3" @updataTimeRangeStatus="updataTimeRangeStatus" />
-    <ModeTwo ref="childComp" v-if="practiceInfo.mode === 2" @updataTimeRangeStatus="updataTimeRangeStatus" />
-    <ModeOne ref="childComp" v-if="practiceInfo.mode === 1" @updataTimeRangeStatus="updataTimeRangeStatus" />
+    <ModeThree ref="childComp" v-if="practiceInfo.mode === 3" @updataTimeRangeStatus="updataTimeRangeStatus" @submitExercise="submit" />
+    <ModeTwo ref="childComp" v-if="practiceInfo.mode === 2" @updataTimeRangeStatus="updataTimeRangeStatus" @submitExercise="submit" />
+    <ModeOne ref="childComp" v-if="practiceInfo.mode === 1" @updataTimeRangeStatus="updataTimeRangeStatus" @submitExercise="submit" />
   </a-card>
   <div class="other">
     <div>
@@ -39,11 +39,11 @@
       <MinusSquareTwoTone @click="smallFontSize" />
     </div>
     <div>
-      <a-button @click="onTry">切换视图</a-button>
+      <a-button @click="onTry" v-if="practiceInfo.mode !== 1">切换视图</a-button>
     </div>
   </div>
   <div class="submit">
-    <a-button type="primary" @click="submit" v-if="isJump">提交</a-button>
+    <a-button type="primary" @click="submit" v-if="isJump">提交 (Ctrl+Enter)</a-button>
     <a-button type="primary" @click="handleOk2" v-else>查看成绩</a-button>
   </div>
   <a-modal v-model:open="open1" title="是否提交文章" @ok="handleOk1">
