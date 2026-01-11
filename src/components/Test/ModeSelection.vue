@@ -1,7 +1,12 @@
 <template>
   <div class="mode-select">
     <!-- 个人练习 -->
-    <a-card class="mode-select-item" :hoverable="true" title="个人练习">
+    <a-card class="mode-select-item" :hoverable="true">
+      <template #title>
+        <a-tooltip placement="top" title="个人竞速模式中，使用盲打进行竞速，尽情超越自我吧！">
+          <span class="card-title-with-tip">个人竞速</span>
+        </a-tooltip>
+      </template>
       <div v-for="(item, index) in languages" :key="item.itemCode || index">
         <a-card class="language-card" :title="item.itemName" @click="startIndividual(item.itemCode)"
           style="margin-bottom: 5px;" hoverable></a-card>
@@ -21,34 +26,18 @@
     </a-card>
 
     <!-- 语言选择弹窗 -->
-    <a-modal
-      v-model:open="matchLanguageModalVisible"
-      title="选择对战语言"
-      :width="500"
-      :closable="true"
-      :maskClosable="true"
-    >
+    <a-modal v-model:open="matchLanguageModalVisible" title="选择对战语言" :width="500" :closable="true" :maskClosable="true">
       <div class="language-selection">
         <a-radio-group v-model:value="selectedMatchLanguage" size="large">
           <a-row :gutter="[16, 16]">
-            <a-col :span="12">
-              <a-radio value="1" class="language-option">
-                <span class="lang-icon">🇨🇳</span>
-                <span class="lang-name">中文</span>
+            <!-- 动态渲染语言选项 -->
+            <a-col :span="12" v-for="(item, index) in languages" :key="item.itemCode || index">
+              <a-radio :value="String(item.itemCode)" class="language-option">
+                <span class="lang-icon">{{ getLanguageIcon(String(item.itemCode)) }}</span>
+                <span class="lang-name">{{ item.itemName }}</span>
               </a-radio>
             </a-col>
-            <a-col :span="12">
-              <a-radio value="2" class="language-option">
-                <span class="lang-icon">🇺🇸</span>
-                <span class="lang-name">English</span>
-              </a-radio>
-            </a-col>
-            <a-col :span="12">
-              <a-radio value="3" class="language-option">
-                <span class="lang-icon">🇯🇵</span>
-                <span class="lang-name">日本語</span>
-              </a-radio>
-            </a-col>
+            <!-- 随机选项 -->
             <a-col :span="12">
               <a-radio value="" class="language-option">
                 <span class="lang-icon">🎲</span>
@@ -58,13 +47,8 @@
           </a-row>
         </a-radio-group>
 
-        <a-alert
-          message="💡 提示"
-          description="选择相同语言的玩家才会匹配到一起。选择'随机'可以匹配到任何语言的玩家。"
-          type="info"
-          show-icon
-          style="margin-top: 20px;"
-        />
+        <a-alert message="💡 提示" description="选择相同语言的玩家才会匹配到一起。选择'随机'可以匹配到任何语言的玩家。" type="info" show-icon
+          style="margin-top: 20px;" />
       </div>
 
       <template #footer>
@@ -84,12 +68,14 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useStore } from 'vuex';
 import utils from '@/api/utils/generalUtil';
 
 const store = useStore();
-const languages = store.state.article.articleLanguage;
+
+// 使用computed确保响应式
+const languages = computed(() => store.state.article.articleLanguage || []);
 
 // 新增状态
 const matchLanguageModalVisible = ref(false);
@@ -103,9 +89,9 @@ const showMatchLanguageModal = () => {
 
 // 确认开始匹配
 const confirmStartMatch = () => {
-  const langName = selectedMatchLanguage.value === '' ? '随机' :
-                   selectedMatchLanguage.value === '1' ? '中文' :
-                   selectedMatchLanguage.value === '2' ? 'English' : '日本語';
+  // 根据itemCode查找语言名称（需要转换类型进行比较）
+  const selectedLang = languages.value.find(lang => String(lang.itemCode) === selectedMatchLanguage.value);
+  const langName = selectedMatchLanguage.value === '' ? '随机' : (selectedLang?.itemName || '未知语言');
 
   if (selectedMatchLanguage.value === '') {
     utils.tip("随机模式：将匹配任何语言的玩家", "info");
@@ -118,6 +104,16 @@ const confirmStartMatch = () => {
     matchMode: '0',
     language: selectedMatchLanguage.value
   });
+};
+
+// 获取语言图标（国旗emoji）
+const getLanguageIcon = (itemCode) => {
+  const iconMap = {
+    '0': '🇨🇳',
+    '1': '🇺🇸',
+    '2': '🇯🇵',
+  };
+  return iconMap[itemCode] || '🌐';
 };
 
 // 定义emit事件，用于向父组件传递事件
@@ -140,6 +136,11 @@ const startIndividual = (languageCode) => {
   align-items: center;
   gap: 1.5rem;
   min-height: 70vh;
+}
+
+.card-title-with-tip {
+  cursor: help;
+  border-bottom: 1px dashed #999;
 }
 
 .mode-select-item {

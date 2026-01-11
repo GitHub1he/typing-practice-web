@@ -21,7 +21,7 @@
           <router-link :to="{ name: 'practice' }">练习</router-link>
         </a-menu-item>
         <a-menu-item key="test">
-          <router-link :to="{ name: 'test' }">测试</router-link>
+          <router-link :to="{ name: 'test' }">竞速</router-link>
         </a-menu-item>
         <a-menu-item key="ranking">
           <router-link :to="{ name: 'ranking' }">排行榜</router-link>
@@ -59,13 +59,13 @@ export default {
     const current = ref(['mail']);
     const store = useStore();
     const loginStatus = computed(() => store.state.user.isLogin);
-    
+
     // 修改为计算属性，这样当 store 中的 avatar 变化时，avatarSrc 会自动更新
     const avatarSrc = computed(() => {
       const avatar = store.state.user.user.avatar;
       return utils.getAvatarSrc(avatar);
     });
-    
+
     return {
       current,
       loginStatus,
